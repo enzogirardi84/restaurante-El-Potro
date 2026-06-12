@@ -26,6 +26,8 @@ npm install
 
 La app puede ejecutarse sin Supabase usando los datos locales de demostración.
 
+El alcance funcional completo del sistema está documentado en `PROMPT_COMPLETO.md`, que conecta los pedidos de menú principal, logo, platos, bebidas, inventario, cocina, caja, PDF/ticketera, Supabase y Streamlit.
+
 Para conectar Supabase:
 
 1. Copiar `.env.example` a `.env.local`.
