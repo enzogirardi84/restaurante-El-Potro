@@ -68,6 +68,7 @@ npm run build
 ## Panel Streamlit + Supabase
 
 El repositorio incluye un panel Streamlit opcional para revisar la conexion con Supabase, validar tablas y consultar datos rapidos.
+El tablero muestra KPIs operativos, alertas de stock bajo minimo, distribucion del menu, comandas, caja, salud de tablas y un explorador con descarga CSV.
 
 1. Instalar dependencias Python:
 
