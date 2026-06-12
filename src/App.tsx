@@ -64,6 +64,7 @@ import PromocionesModule from './components/PromocionesModule';
 import ReservasModule from './components/ReservasModule';
 import FacturacionModule from './components/FacturacionModule';
 import BackupsModule from './components/BackupsModule';
+import RestaurantOpsModule from './components/RestaurantOpsModule';
 import { 
   getSupabaseClient,
   dbFetchMesas,
@@ -93,6 +94,11 @@ type ActiveView =
   | 'promociones'
   | 'reservas'
   | 'facturacion'
+  | 'turnos'
+  | 'compras'
+  | 'clientes'
+  | 'delivery'
+  | 'ticketera'
   | 'sistema'
   | 'backups';
 
@@ -153,6 +159,24 @@ const NAV_ITEMS: NavItem[] = [
     tone: 'green',
   },
   {
+    id: 'turnos',
+    label: 'Turnos',
+    shortLabel: 'Turnos',
+    description: 'Apertura, personal activo y control de servicio.',
+    group: 'Operación',
+    icon: Clock,
+    tone: 'amber',
+  },
+  {
+    id: 'delivery',
+    label: 'Delivery',
+    shortLabel: 'Delivery',
+    description: 'Pedidos externos, canales online y despacho.',
+    group: 'Operación',
+    icon: Truck,
+    tone: 'green',
+  },
+  {
     id: 'reportes',
     label: 'Reportes / BI',
     shortLabel: 'Reportes',
@@ -169,6 +193,24 @@ const NAV_ITEMS: NavItem[] = [
     group: 'Administración',
     icon: Users,
     tone: 'slate',
+  },
+  {
+    id: 'clientes',
+    label: 'Clientes',
+    shortLabel: 'Clientes',
+    description: 'Historial, preferencias, reservas y fidelizacion.',
+    group: 'Administración',
+    icon: Users,
+    tone: 'brown',
+  },
+  {
+    id: 'compras',
+    label: 'Compras',
+    shortLabel: 'Compras',
+    description: 'Reposicion, sugerencias de compra y proveedores.',
+    group: 'Administración',
+    icon: Boxes,
+    tone: 'red',
   },
   {
     id: 'menu',
@@ -250,6 +292,15 @@ const NAV_ITEMS: NavItem[] = [
     group: 'Sistema',
     icon: Settings,
     tone: 'blue',
+  },
+  {
+    id: 'ticketera',
+    label: 'Ticketera',
+    shortLabel: 'Ticketera',
+    description: 'Impresion, PDF, cola de tickets y ESC/POS.',
+    group: 'Sistema',
+    icon: Receipt,
+    tone: 'green',
   },
   {
     id: 'backups',
@@ -365,6 +416,12 @@ export default function App() {
   // Terminal active configs & simulation states
   const [activeMozo, setActiveMozo] = useState<string>('Enzo');
   const [activeView, setActiveView] = useState<ActiveView>('home');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+
+  const selectView = (view: ActiveView) => {
+    setActiveView(view);
+    setIsSidebarCollapsed(true);
+  };
 
   // Simulation Clock state (operational minutes passed)
   const [minutosGlobal, setMinutosGlobal] = useState<number>(0);
@@ -835,6 +892,9 @@ export default function App() {
     if (id === 'mozo') return activeOrdersCount > 0 ? `${activeOrdersCount}` : null;
     if (id === 'cocina') return activeOrdersCount > 0 ? `${activeOrdersCount}` : null;
     if (id === 'caja') return readyToCollectCount > 0 ? `${readyToCollectCount}` : null;
+    if (id === 'delivery') return pedidos.some(p => p.origen === 'Rappi' || p.origen === 'PedidosYa') ? `${pedidos.filter(p => p.origen === 'Rappi' || p.origen === 'PedidosYa').length}` : null;
+    if (id === 'ticketera') return readyToCollectCount > 0 ? `${readyToCollectCount}` : null;
+    if (id === 'compras') return lowStockCount > 0 ? `${lowStockCount}` : null;
     if (id === 'inventario') return lowStockCount > 0 ? `${lowStockCount}` : null;
     if (id === 'menu') return `${productosMenu.filter(p => p.activo).length}`;
     return null;
@@ -848,26 +908,37 @@ export default function App() {
     <div className="min-h-screen lg:h-screen bg-[#F4EFE6] flex flex-col lg:flex-row font-sans text-slate-800 antialiased selection:bg-[#624A3E] selection:text-white overflow-hidden">
 
       {/* LEFT SIDE PANEL (PERSISTENT SIDEBAR) */}
-      <aside className="w-full max-h-[82vh] lg:max-h-none lg:w-[316px] lg:h-screen bg-[#171614] text-[#E9E0D4] flex flex-col border-b lg:border-b-0 lg:border-r border-stone-800 shrink-0 z-40 shadow-2xl shadow-black/20" id="sidebar-left-panel">
+      <aside className={`w-full max-h-[82vh] lg:max-h-none ${isSidebarCollapsed ? 'lg:w-[92px]' : 'lg:w-[316px]'} lg:h-screen bg-[#171614] text-[#E9E0D4] flex flex-col border-b lg:border-b-0 lg:border-r border-stone-800 shrink-0 z-40 shadow-2xl shadow-black/20 transition-all duration-300 ease-out`} id="sidebar-left-panel">
 
         {/* Brand Header */}
         <div className="p-4 border-b border-stone-800 bg-[#12110F]">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#FAF4EE] rounded-lg flex items-center justify-center shadow-md border border-[#8C6239]/35 p-0.5 overflow-hidden shrink-0">
+          <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'lg:justify-center' : ''}`}>
+            <div className={`${isSidebarCollapsed ? 'lg:w-14 lg:h-14' : 'w-12 h-12'} bg-[#FAF4EE] rounded-lg flex items-center justify-center shadow-md border border-[#8C6239]/35 p-0.5 overflow-hidden shrink-0 transition-all`}>
               <ElPatronLogo className="w-11 h-11 object-contain rounded-md" variant="icon" color="#4A2D1B" />
             </div>
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>
               <span className="font-sans font-extrabold text-base text-white tracking-tight block">El Patrón Pro</span>
               <span className="text-[9px] uppercase font-bold text-[#D8B08A] tracking-wider block mt-0.5 leading-none">Gestión gastronómica</span>
             </div>
-            <span className="bg-[#6B4A35]/25 text-amber-200 text-[8px] border border-[#8C6239]/30 px-1.5 py-1 rounded font-bold font-mono shrink-0">
+            <span className={`bg-[#6B4A35]/25 text-amber-200 text-[8px] border border-[#8C6239]/30 px-1.5 py-1 rounded font-bold font-mono shrink-0 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>
               v1.2.0
             </span>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed(prev => !prev)}
+            className={`mt-4 w-full min-h-10 rounded-lg border border-[#8C6239]/35 bg-[#1E1D1A] text-[#E9E0D4] hover:bg-[#2A2824] flex items-center justify-center gap-2 transition-all ${isSidebarCollapsed ? 'lg:h-11 lg:w-11 lg:mx-auto lg:mt-3' : ''}`}
+            title={isSidebarCollapsed ? 'Abrir panel lateral' : 'Cerrar panel lateral'}
+          >
+            <ChevronRight className={`w-4 h-4 transition-transform ${isSidebarCollapsed ? '' : 'rotate-180'}`} />
+            <span className={`text-xs font-extrabold ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>
+              {isSidebarCollapsed ? 'Abrir menu' : 'Cerrar menu'}
+            </span>
+          </button>
         </div>
 
         {/* Live shift controls */}
-        <div className="p-4 border-b border-stone-800 bg-[#1D1B18] space-y-3">
+        <div className={`p-4 border-b border-stone-800 bg-[#1D1B18] space-y-3 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-lg border border-stone-800 bg-[#12110F] p-3">
               <span className="text-[9px] text-stone-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
@@ -926,7 +997,7 @@ export default function App() {
         </div>
 
         {/* Business Rule + personnel */}
-        <div className="p-4 border-b border-stone-800 bg-[#181715] space-y-3">
+        <div className={`p-4 border-b border-stone-800 bg-[#181715] space-y-3 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>
           <label className="flex items-center justify-between bg-[#12110F] border border-stone-800 p-3 rounded-lg cursor-pointer hover:border-[#8C6239]/40 transition-all select-none">
             <div className="min-w-0 pr-2">
               <span className="text-[9px] text-stone-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
@@ -969,10 +1040,10 @@ export default function App() {
         </div>
 
         {/* Multi-role Navigation Panels */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-4 restaurant-scroll">
+        <div className={`flex-1 overflow-y-auto p-3 space-y-4 restaurant-scroll ${isSidebarCollapsed ? 'lg:px-3' : ''}`}>
           {NAV_GROUPS.map(group => (
             <div key={group} className="space-y-2">
-              <span className="text-[10px] font-black text-stone-500 tracking-wider uppercase px-2 block">{group}</span>
+              <span className={`text-[10px] font-black text-stone-500 tracking-wider uppercase px-2 block ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>{group}</span>
 
               <nav className="space-y-1.5" id={`sidebar-navigation-${group.toLowerCase()}`}>
                 {NAV_ITEMS.filter(item => item.group === group).map(item => {
@@ -984,8 +1055,10 @@ export default function App() {
                     <button
                       key={item.id}
                       id={`tab-${item.id}`}
-                      onClick={() => setActiveView(item.id)}
-                      className={`group w-full min-h-12 px-3 py-2.5 rounded-lg border flex items-center gap-3 text-left transition-all cursor-pointer ${
+                      onClick={() => selectView(item.id)}
+                      title={item.label}
+                      aria-label={item.label}
+                      className={`group w-full min-h-12 px-3 py-2.5 rounded-lg border flex items-center gap-3 text-left transition-all cursor-pointer ${isSidebarCollapsed ? 'lg:justify-center lg:px-2' : ''} ${
                         isActive
                           ? 'bg-[#6B4A35] text-white border-[#A77B58]/40 shadow-lg shadow-black/20'
                           : 'bg-[#1E1D1A]/85 hover:bg-[#2A2824] text-stone-300 hover:text-white border-stone-800/80 hover:border-[#8C6239]/35'
@@ -994,7 +1067,7 @@ export default function App() {
                       <span className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${isActive ? 'bg-white/12 text-white border-white/15' : TONE_CLASSES[item.tone]}`}>
                         <Icon className="w-4 h-4" />
                       </span>
-                      <span className="min-w-0 flex-1">
+                      <span className={`min-w-0 flex-1 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>
                         <span className="text-[12px] font-extrabold block leading-tight truncate">{item.label}</span>
                         <span className={`text-[10px] block leading-tight mt-0.5 truncate ${isActive ? 'text-white/70' : 'text-stone-500 group-hover:text-stone-400'}`}>
                           {item.description}
@@ -1003,7 +1076,7 @@ export default function App() {
                       {badge && (
                         <span className={`min-w-6 h-6 px-1.5 rounded-md flex items-center justify-center text-[10px] font-black font-mono border ${
                           isActive ? 'bg-white/15 border-white/15 text-white' : 'bg-black/20 border-stone-700 text-[#D8B08A]'
-                        }`}>
+                        } ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>
                           {badge}
                         </span>
                       )}
@@ -1016,7 +1089,7 @@ export default function App() {
         </div>
 
         {/* Integration Specs footer */}
-        <div className="p-3 bg-[#11100E] text-stone-400 text-[10px] border-t border-stone-800 space-y-2">
+        <div className={`p-3 bg-[#11100E] text-stone-400 text-[10px] border-t border-stone-800 space-y-2 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 text-stone-300 font-bold font-mono min-w-0">
               {hasSupabaseConnection ? (
@@ -1089,7 +1162,7 @@ export default function App() {
                 productosMenu={productosMenu}
                 activeMozo={activeMozo}
                 onMozoChange={handleMozoChange}
-                onNavigate={(view: any) => setActiveView(view)}
+                onNavigate={(view: ActiveView) => selectView(view)}
                 getSimulatedTimeStr={getSimulatedTimeStr}
                 autoTimerRunning={autoTimerRunning}
                 onToggleAutoTimer={handleToggleAutoTimer}
@@ -1106,7 +1179,7 @@ export default function App() {
                 insumos={insumos}
                 logs={logs}
                 getSimulatedTimeStr={getSimulatedTimeStr}
-                onNavigate={(view: any) => setActiveView(view)}
+                onNavigate={(view: ActiveView) => selectView(view)}
               />
             </div>
           )}
@@ -1245,6 +1318,24 @@ export default function App() {
             <div className="animate-fadeIn">
               <FacturacionModule
                 pedidos={pedidos}
+                addLog={addLog}
+              />
+            </div>
+          )}
+
+          {(['turnos', 'compras', 'clientes', 'delivery', 'ticketera'] as ActiveView[]).includes(activeView) && (
+            <div className="animate-fadeIn">
+              <RestaurantOpsModule
+                view={activeView as 'turnos' | 'compras' | 'clientes' | 'delivery' | 'ticketera'}
+                mesas={mesas}
+                pedidos={pedidos}
+                insumos={insumos}
+                productosMenu={productosMenu}
+                logs={logs}
+                activeMozo={activeMozo}
+                getSimulatedTimeStr={getSimulatedTimeStr}
+                onInjectDeliveryOrder={handleInjectDeliveryOrder}
+                onRestockTodo={handleRestockTodo}
                 addLog={addLog}
               />
             </div>
