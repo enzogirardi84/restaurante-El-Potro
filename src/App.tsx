@@ -10,21 +10,29 @@ import {
   Database,
   TrendingUp,
   Receipt,
+  Home,
+  BarChart3,
+  BookOpen,
+  ClipboardList,
+  Boxes,
+  Archive,
+  Settings,
+  Users,
+  WalletCards,
+  FileText,
+  BadgePercent,
+  CalendarDays,
+  Truck,
   Terminal,
   User,
   Clock,
-  Sparkles,
   RefreshCw,
-  Layout,
-  Sliders,
-  ShieldCheck,
   ShieldAlert,
   Smartphone,
-  Eye,
   Scale,
-  Truck,
-  Tag,
-  Calendar
+  ChevronRight,
+  CircleAlert,
+  CircleCheck
 } from 'lucide-react';
 
 import { Mesa, Insumo, ProductoMenu, RecetaEscandallo, Pedido, Merma, EventoLog } from './types';
@@ -68,6 +76,202 @@ import {
   dbFetchMermas,
   dbRecordMovement
 } from './supabase';
+
+type ActiveView =
+  | 'home'
+  | 'panel'
+  | 'mozo'
+  | 'cocina'
+  | 'caja'
+  | 'reportes'
+  | 'usuarios'
+  | 'menu'
+  | 'recetas'
+  | 'mesas'
+  | 'inventario'
+  | 'proveedores'
+  | 'promociones'
+  | 'reservas'
+  | 'facturacion'
+  | 'sistema'
+  | 'backups';
+
+type NavItem = {
+  id: ActiveView;
+  label: string;
+  shortLabel: string;
+  description: string;
+  group: 'Operación' | 'Administración' | 'Sistema';
+  icon: React.ElementType;
+  tone: 'brown' | 'green' | 'amber' | 'blue' | 'red' | 'slate';
+};
+
+const NAV_ITEMS: NavItem[] = [
+  {
+    id: 'home',
+    label: 'Menú Principal',
+    shortLabel: 'Inicio',
+    description: 'Centro operativo y accesos rápidos del restaurante.',
+    group: 'Operación',
+    icon: Home,
+    tone: 'brown',
+  },
+  {
+    id: 'panel',
+    label: 'Panel General',
+    shortLabel: 'Panel',
+    description: 'Métricas macro, alertas críticas y bitácora en vivo.',
+    group: 'Operación',
+    icon: BarChart3,
+    tone: 'blue',
+  },
+  {
+    id: 'mozo',
+    label: 'Mozo / Salón',
+    shortLabel: 'Mozo',
+    description: 'Toma de pedidos, mesas y envío de comandas.',
+    group: 'Operación',
+    icon: Smartphone,
+    tone: 'brown',
+  },
+  {
+    id: 'cocina',
+    label: 'Cocina KDS',
+    shortLabel: 'Cocina',
+    description: 'Preparación, tiempos y descuento de escandallos.',
+    group: 'Operación',
+    icon: ChefHat,
+    tone: 'amber',
+  },
+  {
+    id: 'caja',
+    label: 'Caja',
+    shortLabel: 'Caja',
+    description: 'Cobros, pagos mixtos, cierres y comprobantes.',
+    group: 'Operación',
+    icon: WalletCards,
+    tone: 'green',
+  },
+  {
+    id: 'reportes',
+    label: 'Reportes / BI',
+    shortLabel: 'Reportes',
+    description: 'Lectura comercial, ventas, stock y desempeño.',
+    group: 'Operación',
+    icon: TrendingUp,
+    tone: 'blue',
+  },
+  {
+    id: 'usuarios',
+    label: 'Usuarios',
+    shortLabel: 'Usuarios',
+    description: 'Personal, roles y permisos operativos.',
+    group: 'Administración',
+    icon: Users,
+    tone: 'slate',
+  },
+  {
+    id: 'menu',
+    label: 'Menú',
+    shortLabel: 'Carta',
+    description: 'Platos, bebidas, precios y disponibilidad.',
+    group: 'Administración',
+    icon: BookOpen,
+    tone: 'brown',
+  },
+  {
+    id: 'recetas',
+    label: 'Recetas / Escandallos',
+    shortLabel: 'Recetas',
+    description: 'Ingredientes, gramajes y fórmulas de descuento.',
+    group: 'Administración',
+    icon: ClipboardList,
+    tone: 'amber',
+  },
+  {
+    id: 'mesas',
+    label: 'Mesas',
+    shortLabel: 'Mesas',
+    description: 'Distribución del salón, ocupación y capacidad.',
+    group: 'Administración',
+    icon: UtensilsCrossed,
+    tone: 'blue',
+  },
+  {
+    id: 'inventario',
+    label: 'Inventario',
+    shortLabel: 'Stock',
+    description: 'Insumos, bodega, mermas y reposición.',
+    group: 'Administración',
+    icon: Boxes,
+    tone: 'red',
+  },
+  {
+    id: 'proveedores',
+    label: 'Proveedores',
+    shortLabel: 'Proveedores',
+    description: 'Contactos, compras y abastecimiento.',
+    group: 'Administración',
+    icon: Truck,
+    tone: 'slate',
+  },
+  {
+    id: 'promociones',
+    label: 'Promociones',
+    shortLabel: 'Promos',
+    description: 'Descuentos, happy hour y campañas.',
+    group: 'Administración',
+    icon: BadgePercent,
+    tone: 'green',
+  },
+  {
+    id: 'reservas',
+    label: 'Reservas',
+    shortLabel: 'Reservas',
+    description: 'Agenda, clientes y mesas planificadas.',
+    group: 'Administración',
+    icon: CalendarDays,
+    tone: 'amber',
+  },
+  {
+    id: 'facturacion',
+    label: 'Facturación',
+    shortLabel: 'Facturas',
+    description: 'Archivo tributario, tickets y pagos.',
+    group: 'Administración',
+    icon: FileText,
+    tone: 'green',
+  },
+  {
+    id: 'sistema',
+    label: 'Sistema',
+    shortLabel: 'Sistema',
+    description: 'Supabase, configuración y diagnóstico general.',
+    group: 'Sistema',
+    icon: Settings,
+    tone: 'blue',
+  },
+  {
+    id: 'backups',
+    label: 'Backups',
+    shortLabel: 'Backups',
+    description: 'Copias de seguridad y restauración.',
+    group: 'Sistema',
+    icon: Archive,
+    tone: 'slate',
+  },
+];
+
+const NAV_GROUPS: NavItem['group'][] = ['Operación', 'Administración', 'Sistema'];
+
+const TONE_CLASSES: Record<NavItem['tone'], string> = {
+  brown: 'text-[#D8B08A] bg-[#6B4A35]/18 border-[#8C6239]/25',
+  green: 'text-emerald-300 bg-emerald-500/10 border-emerald-400/20',
+  amber: 'text-amber-300 bg-amber-500/10 border-amber-400/20',
+  blue: 'text-sky-300 bg-sky-500/10 border-sky-400/20',
+  red: 'text-rose-300 bg-rose-500/10 border-rose-400/20',
+  slate: 'text-stone-300 bg-stone-500/10 border-stone-400/20',
+};
 
 export default function App() {
   // --- Global Synced States ---
@@ -160,9 +364,7 @@ export default function App() {
 
   // Terminal active configs & simulation states
   const [activeMozo, setActiveMozo] = useState<string>('Enzo');
-  const [activeView, setActiveView] = useState<
-    'home' | 'panel' | 'mozo' | 'cocina' | 'caja' | 'reportes' | 'usuarios' | 'menu' | 'recetas' | 'mesas' | 'inventario' | 'proveedores' | 'promociones' | 'reservas' | 'facturacion' | 'sistema' | 'backups'
-  >('home');
+  const [activeView, setActiveView] = useState<ActiveView>('home');
 
   // Simulation Clock state (operational minutes passed)
   const [minutosGlobal, setMinutosGlobal] = useState<number>(0);
@@ -621,87 +823,118 @@ export default function App() {
   const activeOrdersCount = pedidos.filter(p => p.estado_comanda === 'pendiente' || p.estado_comanda === 'en_cocina').length;
   const readyToCollectCount = pedidos.filter(p => p.estado_comanda === 'listo').length;
   const lowStockCount = insumos.filter(i => i.stock_actual <= i.stock_minimo).length;
+  const activeNavItem = NAV_ITEMS.find(item => item.id === activeView) || NAV_ITEMS[0];
+  const ActiveHeaderIcon = activeNavItem.icon;
+  const hasSupabaseConnection = !!getSupabaseClient();
+  const totalSalesToday = pedidos
+    .filter(p => p.estado_comanda === 'entregado_cobrado')
+    .reduce((acc, p) => acc + p.items.reduce((sum, item) => sum + (item.cantidad * 12500), 0), 0);
+
+  const getNavBadge = (id: ActiveView): string | null => {
+    if (id === 'mesas') return `${occupiedTablesCount}/${mesas.length}`;
+    if (id === 'mozo') return activeOrdersCount > 0 ? `${activeOrdersCount}` : null;
+    if (id === 'cocina') return activeOrdersCount > 0 ? `${activeOrdersCount}` : null;
+    if (id === 'caja') return readyToCollectCount > 0 ? `${readyToCollectCount}` : null;
+    if (id === 'inventario') return lowStockCount > 0 ? `${lowStockCount}` : null;
+    if (id === 'menu') return `${productosMenu.filter(p => p.activo).length}`;
+    return null;
+  };
 
   if (!isStreamlitLoggedIn) {
     return <PythonStreamlitLogin onLoginSuccess={() => setIsStreamlitLoggedIn(true)} />;
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F1E9] flex flex-col lg:flex-row font-sans text-slate-800 antialiased selection:bg-[#624A3E] selection:text-white">
-      
+    <div className="min-h-screen lg:h-screen bg-[#F4EFE6] flex flex-col lg:flex-row font-sans text-slate-800 antialiased selection:bg-[#624A3E] selection:text-white overflow-hidden">
+
       {/* LEFT SIDE PANEL (PERSISTENT SIDEBAR) */}
-      <aside className="w-full lg:w-80 bg-[#1E1E1E] text-[#E2E8F0] flex flex-col border-b lg:border-b-0 lg:border-r border-stone-850 shrink-0 z-40" id="sidebar-left-panel">
-        
+      <aside className="w-full max-h-[82vh] lg:max-h-none lg:w-[316px] lg:h-screen bg-[#171614] text-[#E9E0D4] flex flex-col border-b lg:border-b-0 lg:border-r border-stone-800 shrink-0 z-40 shadow-2xl shadow-black/20" id="sidebar-left-panel">
+
         {/* Brand Header */}
-        <div className="p-5 border-b border-stone-800 flex items-center justify-between bg-black/20">
+        <div className="p-4 border-b border-stone-800 bg-[#12110F]">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#FAF4EE] rounded-xl flex items-center justify-center shadow-md border border-stone-850 p-0.5 overflow-hidden shrink-0">
-              <ElPatronLogo className="w-11 h-11 object-contain rounded-lg" variant="icon" color="#4A2D1B" />
+            <div className="w-12 h-12 bg-[#FAF4EE] rounded-lg flex items-center justify-center shadow-md border border-[#8C6239]/35 p-0.5 overflow-hidden shrink-0">
+              <ElPatronLogo className="w-11 h-11 object-contain rounded-md" variant="icon" color="#4A2D1B" />
             </div>
-            <div className="min-w-0">
-              <span className="font-sans font-extrabold text-base text-white tracking-tight block">El Patrón</span>
-              <span className="text-[9px] uppercase font-bold text-[#FAF4EE]/70 tracking-wider block mt-0.5 leading-none">Gestión Gastronómica Pro</span>
+            <div className="min-w-0 flex-1">
+              <span className="font-sans font-extrabold text-base text-white tracking-tight block">El Patrón Pro</span>
+              <span className="text-[9px] uppercase font-bold text-[#D8B08A] tracking-wider block mt-0.5 leading-none">Gestión gastronómica</span>
             </div>
-          </div>
-          <span className="bg-[#4A2D1B]/35 text-amber-200 text-[8px] border border-stone-800 px-1.5 py-1 rounded font-bold font-mono shrink-0">
-            v1.2.0
-          </span>
-        </div>
-
-        {/* Real-time System Simulation Clock widget */}
-        <div className="p-4 bg-stone-950/40 border-b border-stone-800 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider flex items-center gap-1.5 font-mono">
-              <Clock className="w-3.5 h-3.5 text-amber-550" style={{ color: '#F59E0B' }} />
-              Reloj del Restaurante
+            <span className="bg-[#6B4A35]/25 text-amber-200 text-[8px] border border-[#8C6239]/30 px-1.5 py-1 rounded font-bold font-mono shrink-0">
+              v1.2.0
             </span>
-            <span className={`h-2 w-2 rounded-full ${autoTimerRunning ? 'bg-emerald-500 animate-pulse' : 'bg-amber-550'}`} style={{ backgroundColor: autoTimerRunning ? '#22C55E' : '#F59E0B' }} />
-          </div>
-
-          <div className="flex items-center justify-between bg-[#151515] border border-stone-800 p-2.5 rounded-xl">
-            <div>
-              <span className="text-[9px] text-stone-550 font-bold block leading-none text-stone-500">HORA DE SERVICIO</span>
-              <strong className="text-lg font-black text-white font-mono tracking-tight">{getSimulatedTimeStr()}</strong>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={handleToggleAutoTimer}
-                title={autoTimerRunning ? 'Pausar Simulación Automática' : 'Iniciar Simulación en Tiempo Real'}
-                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                  autoTimerRunning 
-                    ? 'bg-amber-900/60 text-amber-300 border border-amber-500/30 hover:bg-amber-800' 
-                    : 'bg-emerald-950 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-900'
-                }`}
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${autoTimerRunning ? 'animate-spin' : ''}`} />
-              </button>
-              
-              <button
-                onClick={() => handleAdvanceTime(15)}
-                title="Adelantar +15 Minutos"
-                className="p-1 px-1.5 rounded-lg bg-stone-800 text-stone-300 hover:text-white border border-stone-700 hover:bg-stone-700 text-[10px] font-bold cursor-pointer transition-all"
-              >
-                +15m
-              </button>
-            </div>
           </div>
         </div>
 
-        {/* Business Rule: Venta sin stock */}
-        <div className="p-4 bg-stone-950/30 border-b border-stone-800 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider flex items-center gap-1.5 font-mono">
-              <ShieldAlert className="w-3.5 h-3.5 text-[#F97316]" />
-              Fórmula sin Stock
-            </span>
-            <span className="text-[10px] text-stone-500 font-bold font-mono">RESTRICCIÓN</span>
+        {/* Live shift controls */}
+        <div className="p-4 border-b border-stone-800 bg-[#1D1B18] space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-stone-800 bg-[#12110F] p-3">
+              <span className="text-[9px] text-stone-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                Servicio
+              </span>
+              <strong className="text-lg font-black text-white font-mono tracking-tight block mt-1">{getSimulatedTimeStr()}</strong>
+            </div>
+            <div className="rounded-lg border border-stone-800 bg-[#12110F] p-3">
+              <span className="text-[9px] text-stone-500 font-bold uppercase tracking-wider">Recaudado</span>
+              <strong className="text-lg font-black text-white font-mono tracking-tight block mt-1">${totalSalesToday.toLocaleString('es-AR')}</strong>
+            </div>
           </div>
-          <label className="flex items-center justify-between bg-[#151515] border border-stone-800 p-2.5 rounded-xl cursor-pointer hover:bg-[#252525] transition-all select-none">
+
+          <div className="grid grid-cols-4 gap-2">
+            <div className="rounded-lg border border-stone-800 bg-[#12110F] p-2 text-center">
+              <span className="text-[9px] text-stone-500 font-bold block">Mesas</span>
+              <strong className="text-sm font-black text-white font-mono">{occupiedTablesCount}/{mesas.length}</strong>
+            </div>
+            <div className="rounded-lg border border-stone-800 bg-[#12110F] p-2 text-center">
+              <span className="text-[9px] text-stone-500 font-bold block">KDS</span>
+              <strong className="text-sm font-black text-amber-300 font-mono">{activeOrdersCount}</strong>
+            </div>
+            <div className="rounded-lg border border-stone-800 bg-[#12110F] p-2 text-center">
+              <span className="text-[9px] text-stone-500 font-bold block">Caja</span>
+              <strong className="text-sm font-black text-emerald-300 font-mono">{readyToCollectCount}</strong>
+            </div>
+            <div className="rounded-lg border border-stone-800 bg-[#12110F] p-2 text-center">
+              <span className="text-[9px] text-stone-500 font-bold block">Stock</span>
+              <strong className={`text-sm font-black font-mono ${lowStockCount > 0 ? 'text-rose-300' : 'text-emerald-300'}`}>{lowStockCount}</strong>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleToggleAutoTimer}
+              title={autoTimerRunning ? 'Pausar reloj operativo' : 'Iniciar reloj operativo'}
+              className={`app-icon-button flex-1 ${
+                autoTimerRunning
+                  ? 'bg-amber-900/50 text-amber-200 border-amber-500/30'
+                  : 'bg-emerald-950/70 text-emerald-300 border-emerald-500/20'
+              }`}
+            >
+              <RefreshCw className={`w-4 h-4 ${autoTimerRunning ? 'animate-spin' : ''}`} />
+              <span>{autoTimerRunning ? 'Pausar' : 'Iniciar'}</span>
+            </button>
+
+            <button
+              onClick={() => handleAdvanceTime(15)}
+              title="Adelantar +15 minutos"
+              className="app-icon-button bg-stone-900 text-stone-200 border-stone-700 hover:bg-stone-800"
+            >
+              +15m
+            </button>
+          </div>
+        </div>
+
+        {/* Business Rule + personnel */}
+        <div className="p-4 border-b border-stone-800 bg-[#181715] space-y-3">
+          <label className="flex items-center justify-between bg-[#12110F] border border-stone-800 p-3 rounded-lg cursor-pointer hover:border-[#8C6239]/40 transition-all select-none">
             <div className="min-w-0 pr-2">
-              <span className="text-[9px] text-stone-500 font-bold block leading-none">VENTA PARMITIDA</span>
-              <span className="text-xs font-semibold text-white tracking-tight truncate block mt-0.5">
-                {permitirVentaSinStock ? 'Forzar Ventas Habilitada' : 'Bloquear sin ingred.'}
+              <span className="text-[9px] text-stone-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5 text-orange-400" />
+                Regla de stock
+              </span>
+              <span className="text-xs font-semibold text-white tracking-tight truncate block mt-1">
+                {permitirVentaSinStock ? 'Venta forzada habilitada' : 'Bloquear sin ingredientes'}
               </span>
             </div>
             <input
@@ -714,20 +947,17 @@ export default function App() {
               className="rounded border-stone-700 text-[#624A3E] focus:ring-[#624A3E] w-4 h-4 bg-stone-800 cursor-pointer"
             />
           </label>
-        </div>
 
-        {/* Interactive Personnel login manager */}
-        <div className="p-4 border-b border-stone-800 bg-stone-950/20">
-          <div className="flex items-center gap-3 bg-stone-900/90 border border-stone-800 p-3 rounded-xl">
-            <div className="w-8 h-8 rounded-full bg-stone-800 border border-stone-750 flex items-center justify-center text-stone-305">
-              <User className="w-4 h-4 text-stone-400" />
+          <div className="flex items-center gap-3 bg-[#12110F] border border-stone-800 p-3 rounded-lg">
+            <div className="w-9 h-9 rounded-lg bg-[#6B4A35]/20 border border-[#8C6239]/20 flex items-center justify-center text-[#D8B08A]">
+              <User className="w-4 h-4" />
             </div>
             <div className="flex-1 text-left min-w-0">
-              <span className="text-[9px] text-stone-500 block font-bold leading-none uppercase">Usuario en Consola</span>
+              <span className="text-[9px] text-stone-500 block font-bold leading-none uppercase tracking-wider">Usuario en consola</span>
               <select
                 value={activeMozo}
                 onChange={(e) => handleMozoChange(e.target.value)}
-                className="text-xs bg-transparent border-none p-0 focus:outline-none font-extrabold text-white cursor-pointer w-full mt-0.5 focus:ring-0"
+                className="text-xs bg-transparent border-none p-0 focus:outline-none font-extrabold text-white cursor-pointer w-full mt-1 focus:ring-0"
               >
                 <option value="Enzo" className="bg-stone-950 text-stone-200">Enzo (Mozo Salón)</option>
                 <option value="Micaela" className="bg-stone-950 text-stone-200">Micaela (Mozo Salón)</option>
@@ -739,116 +969,115 @@ export default function App() {
         </div>
 
         {/* Multi-role Navigation Panels */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black text-stone-500 tracking-wider uppercase pl-2 mb-2 block">Módulos del Sistema</span>
-            
-            <nav className="space-y-2" id="sidebar-navigation">
-              {[
-                { id: 'home', label: 'Menú Principal 🍽️' },
-                { id: 'panel', label: 'Panel General' },
-                { id: 'mozo', label: 'Mozo / Salón' },
-                { id: 'cocina', label: 'Cocina KDS' },
-                { id: 'caja', label: 'Caja' },
-                { id: 'reportes', label: 'Reportes / BI' },
-                { id: 'usuarios', label: 'Usuarios' },
-                { id: 'menu', label: 'Menú' },
-                { id: 'recetas', label: 'Recetas / Escandallos' },
-                { id: 'mesas', label: 'Mesas' },
-                { id: 'inventario', label: 'Inventario' },
-                { id: 'proveedores', label: 'Proveedores' },
-                { id: 'promociones', label: 'Promociones' },
-                { id: 'reservas', label: 'Reservas' },
-                { id: 'facturacion', label: 'Facturación' },
-                { id: 'sistema', label: 'Sistema' },
-                { id: 'backups', label: 'Backups' }
-              ].map(item => {
-                const isActive = activeView === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    id={`tab-${item.id}`}
-                    onClick={() => setActiveView(item.id as any)}
-                    className={`w-full py-3.5 text-center text-xs font-black rounded-lg tracking-wider border block transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-[#4D3227] text-white border-stone-800/10 font-bold shadow-md shadow-black/20'
-                        : 'bg-[#181816]/75 hover:bg-[#25231F] text-stone-300 hover:text-white border-stone-850/60'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-4 restaurant-scroll">
+          {NAV_GROUPS.map(group => (
+            <div key={group} className="space-y-2">
+              <span className="text-[10px] font-black text-stone-500 tracking-wider uppercase px-2 block">{group}</span>
+
+              <nav className="space-y-1.5" id={`sidebar-navigation-${group.toLowerCase()}`}>
+                {NAV_ITEMS.filter(item => item.group === group).map(item => {
+                  const Icon = item.icon;
+                  const isActive = activeView === item.id;
+                  const badge = getNavBadge(item.id);
+
+                  return (
+                    <button
+                      key={item.id}
+                      id={`tab-${item.id}`}
+                      onClick={() => setActiveView(item.id)}
+                      className={`group w-full min-h-12 px-3 py-2.5 rounded-lg border flex items-center gap-3 text-left transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-[#6B4A35] text-white border-[#A77B58]/40 shadow-lg shadow-black/20'
+                          : 'bg-[#1E1D1A]/85 hover:bg-[#2A2824] text-stone-300 hover:text-white border-stone-800/80 hover:border-[#8C6239]/35'
+                      }`}
+                    >
+                      <span className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${isActive ? 'bg-white/12 text-white border-white/15' : TONE_CLASSES[item.tone]}`}>
+                        <Icon className="w-4 h-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="text-[12px] font-extrabold block leading-tight truncate">{item.label}</span>
+                        <span className={`text-[10px] block leading-tight mt-0.5 truncate ${isActive ? 'text-white/70' : 'text-stone-500 group-hover:text-stone-400'}`}>
+                          {item.description}
+                        </span>
+                      </span>
+                      {badge && (
+                        <span className={`min-w-6 h-6 px-1.5 rounded-md flex items-center justify-center text-[10px] font-black font-mono border ${
+                          isActive ? 'bg-white/15 border-white/15 text-white' : 'bg-black/20 border-stone-700 text-[#D8B08A]'
+                        }`}>
+                          {badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          ))}
         </div>
 
         {/* Integration Specs footer */}
-        <div className="p-4 bg-stone-950 text-stone-400 text-[10px] border-t border-stone-800 space-y-1">
-          <div className="flex items-center gap-1.5 text-stone-300 font-bold font-mono">
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
-            SQLite + Supabase Bridge
+        <div className="p-3 bg-[#11100E] text-stone-400 text-[10px] border-t border-stone-800 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-stone-300 font-bold font-mono min-w-0">
+              {hasSupabaseConnection ? (
+                <CircleCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              ) : (
+                <CircleAlert className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              )}
+              <span className="truncate">{hasSupabaseConnection ? 'Supabase activo' : 'Modo local'}</span>
+            </div>
+            <span className="text-stone-600 font-mono">SQLite bridge</span>
           </div>
-          <p className="opacity-75">Sesión local conectada de forma segura.</p>
+          <p className="opacity-75">Los módulos viven en este panel lateral izquierdo.</p>
         </div>
       </aside>
 
       {/* CORE ACTIVE MODULE AREA (RIGHT SIDE CONTENT PANE) */}
-      <main className="flex-1 flex flex-col min-w-0 bg-[#F5F1E9]">
-        
+      <main className="flex-1 flex flex-col min-w-0 bg-[#F4EFE6] lg:h-screen overflow-hidden">
+
         {/* TOP STATUS BAR ACCENTS */}
-        <div className="bg-[#F5F1E9] border-b border-stone-200/80 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-extrabold text-[#624A3E] capitalize tracking-tight flex items-center gap-2">
-              {activeView === 'home' && <>🍽️ Menú Principal & Centro Operativo</>}
-              {activeView === 'panel' && <>📊 Panel de Control y Resumen de Turno</>}
-              {activeView === 'mozo' && <>📱 Terminal Interactiva de Mozos</>}
-              {activeView === 'cocina' && <>🍳 Monitor de Cocina (KDS)</>}
-              {activeView === 'caja' && <>💵 Control de Caja y Cierres</>}
-              {activeView === 'reportes' && <>📈 Analíticas de Desempeño & BI</>}
-              {activeView === 'usuarios' && <>👥 Personal y Usuarios de Turno</>}
-              {activeView === 'menu' && <>📖 Menú y Carta Gastronómica</>}
-              {activeView === 'recetas' && <>⚖️ Control de Escandallos y Recetas</>}
-              {activeView === 'mesas' && <>🪑 Distribución de Mesas en Salón</>}
-              {activeView === 'inventario' && <>📦 Gestión de Insumos & Recetas</>}
-              {activeView === 'proveedores' && <>🚚 Proveedores e Integraciones</>}
-              {activeView === 'promociones' && <>🏷️ Campañas de Promociones</>}
-              {activeView === 'reservas' && <>📅 Agenda de Reservas de Hoy</>}
-              {activeView === 'facturacion' && <>🧾 Archivo Tributario de Facturas</>}
-              {activeView === 'sistema' && <>💻 Consola de Configuración General</>}
-              {activeView === 'backups' && <>🗄️ Copias de Seguridad (Backup)</>}
-            </h1>
-            <p className="text-xs text-stone-500 mt-0.5">
-              {activeView === 'home' && 'Bienvenido a El Patrón Pro. Ingrese rápidamente a cualquier sección o terminal.'}
-              {activeView === 'panel' && 'Métricas macro, alertas críticas y bitácora operativa en tiempo real.'}
-              {activeView === 'mozo' && 'Gestión táctil de ocupación de salón, comensales y envío asíncrono de comandas a cocina.'}
-              {activeView === 'cocina' && 'Recepción en tiempo real, alertas de preparación con temporizador y descuento automático por receta.'}
-              {activeView === 'caja' && 'Facturación completa, control de medios de pago, registros fiscales e historial impreso.'}
-              {activeView === 'reportes' && 'Visualizadores gráficos para toma de decisiones, facturación acumulada e historial.'}
-              {activeView === 'usuarios' && 'Roles, perfiles del personal y trazabilidad en el salón.'}
-              {activeView === 'menu' && 'Configuración de oferta comercial, precios públicos y estatus en carta.'}
-              {activeView === 'recetas' && 'Asociación de ingredientes crudos y cálculo automático de rendimiento y márgenes.'}
-              {activeView === 'mesas' && 'Visualización interactiva, asignación de mesas y control de capacidad.'}
-              {activeView === 'inventario' && 'Análisis pormenorizado de stock actual, recetas, mermas cargadas y reposiciones.'}
-              {activeView === 'proveedores' && 'Contactos comerciales, plazos de entrega y reabastecimiento programado.'}
-              {activeView === 'promociones' && 'Incentivos de ventas, descuentos happy hour y combos especiales.'}
-              {activeView === 'reservas' && 'Planificación de visitas, comensales reservados y asignación de mesas.'}
-              {activeView === 'facturacion' && 'Historial de facturas comprobantes de venta, control de IVA y notas de crédito.'}
-              {activeView === 'sistema' && 'Estatus de base de datos Postgres/Supabase, variables de entorno y copias de seguridad.'}
-              {activeView === 'backups' && 'Respaldo íntegro de la base de datos, descargas JSON y restauración de checkpoints.'}
-            </p>
+        <div className="bg-[#FFFDF8] border-b border-stone-200 px-4 md:px-6 py-4 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-11 h-11 rounded-lg border flex items-center justify-center shrink-0 ${TONE_CLASSES[activeNavItem.tone]}`}>
+              <ActiveHeaderIcon className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase tracking-wider font-black text-[#8C6239]">{activeNavItem.group}</span>
+                <ChevronRight className="w-3 h-3 text-stone-400" />
+                <span className="text-[10px] uppercase tracking-wider font-black text-stone-400">{activeNavItem.shortLabel}</span>
+              </div>
+              <h1 className="text-xl md:text-2xl font-extrabold text-[#2F241D] tracking-tight leading-tight">
+                {activeNavItem.label}
+              </h1>
+              <p className="text-xs md:text-sm text-stone-500 mt-0.5 max-w-3xl">
+                {activeNavItem.description}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-600 bg-white border border-stone-200 px-2.5 py-1 rounded-xl font-medium flex items-center gap-1.5 shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-[#22C55E]" />
-              Sesión: Damián & Sofia (Activos)
-            </span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full xl:w-auto">
+            <div className="app-status-chip">
+              <span className="app-status-dot bg-emerald-500" />
+              <span>{activeMozo}</span>
+            </div>
+            <div className="app-status-chip">
+              <Clock className="w-3.5 h-3.5 text-[#8C6239]" />
+              <span>{getSimulatedTimeStr()}</span>
+            </div>
+            <div className="app-status-chip">
+              <ChefHat className="w-3.5 h-3.5 text-amber-600" />
+              <span>{activeOrdersCount} KDS</span>
+            </div>
+            <div className="app-status-chip">
+              <Scale className={`w-3.5 h-3.5 ${lowStockCount > 0 ? 'text-rose-600' : 'text-emerald-600'}`} />
+              <span>{lowStockCount} stock</span>
+            </div>
           </div>
         </div>
 
         {/* MAIN SCROLLABLE CONTENT */}
-        <div className="flex-1 p-6 space-y-6 overflow-y-auto max-w-7xl w-full mx-auto">
+        <div className="flex-1 p-4 md:p-6 space-y-6 overflow-y-auto max-w-[1500px] w-full mx-auto restaurant-scroll">
           
           {/* ACTIVE TAB RENDER TRIAGE */}
           {activeView === 'home' && (
