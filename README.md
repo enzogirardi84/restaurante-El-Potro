@@ -7,6 +7,7 @@ Aplicación web para administrar la operación diaria de un restaurante: menú p
 - Vite + React 19 + TypeScript
 - Tailwind CSS 4
 - Supabase JS para persistencia remota opcional
+- Streamlit para panel auxiliar de diagnostico Supabase
 - jsPDF para comprobantes descargables
 - Datos iniciales locales para modo demo/offline
 
@@ -63,6 +64,32 @@ Contraseña: restaurante
 npm run lint
 npm run build
 ```
+
+## Panel Streamlit + Supabase
+
+El repositorio incluye un panel Streamlit opcional para revisar la conexion con Supabase, validar tablas y consultar datos rapidos.
+
+1. Instalar dependencias Python:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Copiar `.streamlit/secrets.toml.example` a `.streamlit/secrets.toml`.
+3. Completar las variables locales:
+
+```toml
+SUPABASE_URL = "https://tu-proyecto.supabase.co"
+SUPABASE_ANON_KEY = "tu-anon-key"
+```
+
+4. Ejecutar:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+Para Streamlit Cloud, cargar los mismos valores en `App settings > Secrets`. El archivo `.streamlit/secrets.toml` esta ignorado por Git para evitar subir claves reales.
 
 ## Limpieza
 

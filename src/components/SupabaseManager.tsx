@@ -1,29 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Database, 
-  Server, 
-  RefreshCw, 
-  CheckCircle, 
-  AlertTriangle, 
-  Unlock, 
-  Sliders, 
-  CloudLightning, 
-  Upload, 
-  Download, 
-  Zap, 
+﻿import React, { useState, useEffect } from 'react';
+import {
+  Database,
+  Server,
+  RefreshCw,
+  CheckCircle,
+  AlertTriangle,
+  Unlock,
+  Sliders,
+  CloudLightning,
+  Upload,
+  Download,
+  Zap,
   Sparkles,
   Info
 } from 'lucide-react';
-import { 
-  getSupabaseConfig, 
-  getSupabaseClient, 
-  resetSupabaseInstance, 
-  dbFetchUsuarios, 
-  dbFetchMesas, 
-  dbFetchInsumos, 
-  dbFetchProductosMenu, 
-  dbFetchRecetas, 
-  dbFetchPromociones, 
+import {
+  getSupabaseConfig,
+  getSupabaseClient,
+  resetSupabaseInstance,
+  dbFetchUsuarios,
+  dbFetchMesas,
+  dbFetchInsumos,
+  dbFetchProductosMenu,
+  dbFetchRecetas,
+  dbFetchPromociones,
   dbFetchProveedores,
   dbFetchReservas,
   dbUpsertUsuarios,
@@ -37,12 +37,12 @@ import {
   dbFetchMermas,
   dbUpsertMermas
 } from '../supabase';
-import { 
-  INITIAL_USUARIOS, 
-  INITIAL_MESAS, 
-  INITIAL_INSUMOS, 
-  INITIAL_PRODUCTOS_MENU, 
-  INITIAL_RECETAS_ESCANDALLO 
+import {
+  INITIAL_USUARIOS,
+  INITIAL_MESAS,
+  INITIAL_INSUMOS,
+  INITIAL_PRODUCTOS_MENU,
+  INITIAL_RECETAS_ESCANDALLO
 } from '../data/initialData';
 
 interface SupabaseManagerProps {
@@ -73,7 +73,7 @@ export default function SupabaseManager({
   const [copiedKey, setCopiedKey] = useState(false);
   const [url, setUrl] = useState('');
   const [anonKey, setAnonKey] = useState('');
-  
+
   // Statuses
   const [connectionStatus, setConnectionStatus] = useState<'not_configured' | 'testing' | 'connected' | 'error'>('not_configured');
   const [connectionMessage, setConnectionMessage] = useState('');
@@ -83,7 +83,7 @@ export default function SupabaseManager({
   // Dynamic PostgreSQL scan states
   const [scannedTables, setScannedTables] = useState<any[]>([]);
   const [isScanning, setIsScanning] = useState(false);
-  
+
   // Interactive inspection grid states
   const [selectedTableForInspect, setSelectedTableForInspect] = useState<string | null>(null);
   const [inspectRows, setInspectRows] = useState<any[]>([]);
@@ -118,8 +118,8 @@ export default function SupabaseManager({
     const config = getSupabaseConfig();
     setUrl(config.url);
     // Don't show fully truncated key in state literally
-    setAnonKey(config.key === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' ? '' : config.key);
-    
+    setAnonKey(config.key === 'SUPABASE_ANON_KEY_TRUNCADA...' ? '' : config.key);
+
     // Auto-test if config looks fully valid
     if (config.url && config.key && !config.key.includes('...')) {
       testConnection(config.url, config.key);
@@ -129,13 +129,13 @@ export default function SupabaseManager({
   const scanDatabaseTables = async (client: any) => {
     setIsScanning(true);
     const results: any[] = [];
-    
+
     for (const cand of candidateTables) {
       try {
         const { data, count, error } = await client
           .from(cand.name)
           .select('*', { count: 'exact', head: true });
-        
+
         if (error) {
           if (error.code === 'PGRST116' || error.message?.includes('not find') || error.code === '42P01') {
             results.push({ ...cand, status: 'missing', count: 'Sin Crear' });
@@ -173,7 +173,7 @@ export default function SupabaseManager({
         .from(tableName)
         .select('*')
         .limit(100);
-      
+
       if (error) throw error;
 
       if (data && data.length > 0) {
@@ -215,7 +215,7 @@ export default function SupabaseManager({
 
       // Test reading tables
       const { data: userTest, error: userError } = await client.from('usuarios').select('count', { count: 'exact', head: true });
-      
+
       if (userError && userError.code !== '42P01' && userError.code !== 'PGRST116') {
         throw userError;
       }
@@ -274,22 +274,22 @@ export default function SupabaseManager({
     try {
       // 1. Send usuarios
       await dbUpsertUsuarios(INITIAL_USUARIOS);
-      
+
       // 2. Send mesas
       await dbUpsertMesas(currentMesas.length > 0 ? currentMesas : INITIAL_MESAS);
-      
+
       // 3. Send insumos
       await dbUpsertInsumos(currentInsumos.length > 0 ? currentInsumos : INITIAL_INSUMOS);
-      
+
       // 4. Send menu
       await dbUpsertProductosMenu(currentProductosMenu.length > 0 ? currentProductosMenu : INITIAL_PRODUCTOS_MENU);
-      
+
       // 5. Send recetas
       await dbUpsertRecetas(currentRecetas.length > 0 ? currentRecetas : INITIAL_RECETAS_ESCANDALLO);
 
       addLog('sistema', 'SUPABASE: ¡Base de Datos sembrada con éxito! Todos los registros de inventario, recetas y mesas están sincronizados en el servidor.');
       alert('¡Base de Datos sembrada y sincronizada correctamente en Supabase! Las tablas ahora tienen registros operacionales.');
-      
+
       // Refresh counts
       testConnection(url, anonKey);
 
@@ -388,8 +388,8 @@ export default function SupabaseManager({
 
         <div className="flex items-center gap-1.5">
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-            connectionStatus === 'connected' 
-              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+            connectionStatus === 'connected'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
               : connectionStatus === 'testing'
               ? 'bg-amber-50 text-amber-700 border border-amber-200 animate-pulse'
               : connectionStatus === 'error'
@@ -412,9 +412,9 @@ export default function SupabaseManager({
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 bg-slate-50/70 p-4 rounded-xl border border-slate-100">
         <div className="md:col-span-4 space-y-1">
           <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block">Supabase App URL</label>
-          <input 
-            type="text" 
-            placeholder="https://xxx.supabase.co" 
+          <input
+            type="text"
+            placeholder="https://xxx.supabase.co"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             className="w-full text-xs py-1.5 px-3 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#624A3E]"
@@ -423,9 +423,9 @@ export default function SupabaseManager({
 
         <div className="md:col-span-5 space-y-1">
           <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block">Supabase Client Anon Key</label>
-          <input 
-            type="password" 
-            placeholder="eyJhbGciOiJIUzI... (Su clave anónima)" 
+          <input
+            type="password"
+            placeholder="SUPABASE_ANON_KEY"
             value={anonKey}
             onChange={(e) => setAnonKey(e.target.value)}
             className="w-full text-xs py-1.5 px-3 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#624A3E] font-mono"
@@ -441,7 +441,7 @@ export default function SupabaseManager({
             <RefreshCw className={`w-3.5 h-3.5 ${connectionStatus === 'testing' ? 'animate-spin' : ''}`} />
             Conectar
           </button>
-          
+
           {(url || anonKey) && (
             <button
               onClick={handleClearConfig}
@@ -456,8 +456,8 @@ export default function SupabaseManager({
 
       {connectionMessage && (
         <div className={`p-3 rounded-lg text-[11px] leading-snug font-medium flex items-center gap-2 ${
-          connectionStatus === 'connected' 
-            ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-800' 
+          connectionStatus === 'connected'
+            ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-800'
             : connectionStatus === 'error'
             ? 'bg-rose-500/10 border border-rose-500/25 text-rose-800'
             : 'bg-amber-500/10 border border-amber-500/25 text-amber-800'
@@ -474,7 +474,7 @@ export default function SupabaseManager({
       {/* Database stats and bi-directional synchronizer dashboard */}
       {connectionStatus === 'connected' && (
         <div className="space-y-6 mt-4 border-t border-slate-100 pt-4 animate-fadeIn">
-          
+
           {/* Table List Scanner Grid */}
           <div className="space-y-2">
             <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
@@ -501,15 +501,15 @@ export default function SupabaseManager({
                   const isSelected = selectedTableForInspect === table.name;
                   const isDetected = table.status === 'detected';
                   const isForbidden = table.status === 'forbidden';
-                  
+
                   return (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       className={`p-3 rounded-xl border transition-all flex flex-col justify-between ${
-                        isSelected 
-                          ? 'border-[#624A3E] bg-[#624A3E]/5 ring-1 ring-[#624A3E]/10' 
-                          : isDetected 
-                          ? 'border-slate-150 bg-white hover:bg-slate-50/50' 
+                        isSelected
+                          ? 'border-[#624A3E] bg-[#624A3E]/5 ring-1 ring-[#624A3E]/10'
+                          : isDetected
+                          ? 'border-slate-150 bg-white hover:bg-slate-50/50'
                           : 'border-slate-100 bg-slate-50/30 opacity-70'
                       }`}
                     >
@@ -519,10 +519,10 @@ export default function SupabaseManager({
                             {table.name}
                           </span>
                           <span className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded shrink-0 ${
-                            isDetected 
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                              : isForbidden 
-                              ? 'bg-amber-50 text-amber-700 border border-amber-100' 
+                            isDetected
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              : isForbidden
+                              ? 'bg-amber-50 text-amber-700 border border-amber-100'
                               : 'bg-slate-100 text-slate-400 border border-slate-200'
                           }`}>
                             {isDetected ? `${table.count} filas` : isForbidden ? 'RLS Guard' : 'No Creada'}
@@ -566,7 +566,7 @@ export default function SupabaseManager({
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <input 
+                  <input
                     type="text"
                     value={inspectFilter}
                     onChange={(e) => {
@@ -608,12 +608,12 @@ export default function SupabaseManager({
                 <div className="space-y-2.5">
                   {/* Rows count summary */}
                   {(() => {
-                    const filtered = inspectRows.filter(row => 
+                    const filtered = inspectRows.filter(row =>
                       JSON.stringify(row).toLowerCase().includes(inspectFilter.toLowerCase())
                     );
                     const totalPages = Math.ceil(filtered.length / pageSize);
                     const displayed = filtered.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
-                    
+
                     return (
                       <>
                         {/* Table layout overflow holder */}
@@ -662,7 +662,7 @@ export default function SupabaseManager({
                           <span>
                             Mostrando {pageIndex * pageSize + 1}-{Math.min((pageIndex + 1) * pageSize, filtered.length)} de {filtered.length} filas coincidentes (de {inspectRows.length} examinadas)
                           </span>
-                          
+
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => setPageIndex(p => Math.max(0, p - 1))}
