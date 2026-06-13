@@ -34,6 +34,7 @@ import {
   dbUpsertPromociones,
   dbUpsertProveedores,
   dbUpsertReservas,
+  dbFetchPedidos,
   dbFetchMermas,
   dbUpsertMermas
 } from '../supabase';
@@ -52,6 +53,7 @@ interface SupabaseManagerProps {
     productosMenu?: any[];
     recetas?: any[];
     usuarios?: any[];
+    pedidos?: any[];
     mermas?: any[];
   }) => void;
   // Current states to seed/push if needed
@@ -318,6 +320,7 @@ export default function SupabaseManager({
       const dbInsumos = await dbFetchInsumos();
       const dbProducts = await dbFetchProductosMenu();
       const dbRecipes = await dbFetchRecetas();
+      const dbPedidos = await dbFetchPedidos();
       const dbMermas = await dbFetchMermas();
 
       // Assemble update object
@@ -348,6 +351,10 @@ export default function SupabaseManager({
       }
       if (dbRecipes && dbRecipes.length > 0) {
         syncedPayload.recetas = dbRecipes;
+        pulledCount++;
+      }
+      if (dbPedidos && dbPedidos.length > 0) {
+        syncedPayload.pedidos = dbPedidos;
         pulledCount++;
       }
       if (dbMermas && dbMermas.length > 0) {
