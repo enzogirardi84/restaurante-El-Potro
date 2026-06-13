@@ -25,10 +25,11 @@ const isOfflinePersistenceError = (error: unknown) => {
 
 interface MenuModuleProps {
   productosMenu: ProductoMenu[];
+  onProductosMenuChange?: (productos: ProductoMenu[]) => void;
   addLog: (tipo: any, mensaje: string) => void;
 }
 
-export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
+export default function MenuModule({ productosMenu, onProductosMenuChange, addLog }: MenuModuleProps) {
   const [items, setItems] = useState<ProductoMenu[]>(productosMenu);
 
   useEffect(() => {
@@ -50,6 +51,14 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
   const [editPrecio, setEditPrecio] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+
+  const updateItems = (updater: (current: ProductoMenu[]) => ProductoMenu[]) => {
+    setItems(current => {
+      const next = updater(current);
+      onProductosMenuChange?.(next);
+      return next;
+    });
+  };
 
   const handleCreateItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,11 +106,12 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
       tiempo_preparacion_estimado: requiere_cocina ? 12 : undefined
     };
 
-    setItems(prev => [newItem, ...prev]);
+    updateItems(prev => [newItem, ...prev]);
     setSavingId('create');
 
     try {
-      await menuService.create(newItem);
+      const savedItem = await menuService.create(newItem);
+      updateItems(prev => prev.map(item => item.id_producto === newItem.id_producto ? savedItem : item));
       setFeedback({ type: 'success', message: 'Producto guardado en Supabase.' });
     } catch (err) {
       console.error(err);
@@ -127,16 +137,17 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
     if (!target) return;
 
     const nextState = !target.activo;
-    setItems(prev => prev.map(item => item.id_producto === id ? { ...item, activo: nextState } : item));
+    updateItems(prev => prev.map(item => item.id_producto === id ? { ...item, activo: nextState } : item));
     setSavingId(id);
 
     try {
-      await menuService.update(id, { activo: nextState });
+      const savedItem = await menuService.update(id, { activo: nextState });
+      updateItems(prev => prev.map(item => item.id_producto === id ? savedItem : item));
       setFeedback({ type: 'success', message: `Estado de "${target.nombre}" actualizado.` });
     } catch (err) {
       console.error(err);
       if (!isOfflinePersistenceError(err)) {
-        setItems(prev => prev.map(item => item.id_producto === id ? { ...item, activo: target.activo } : item));
+        updateItems(prev => prev.map(item => item.id_producto === id ? { ...item, activo: target.activo } : item));
       }
       setFeedback({
         type: 'warning',
@@ -166,17 +177,18 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
       return;
     }
 
-    setItems(prev => prev.map(item => item.id_producto === id ? { ...item, precio_venta: parsedPrice } : item));
+    updateItems(prev => prev.map(item => item.id_producto === id ? { ...item, precio_venta: parsedPrice } : item));
     setSavingId(id);
 
     try {
-      await menuService.update(id, { precio_venta: parsedPrice });
+      const savedItem = await menuService.update(id, { precio_venta: parsedPrice });
+      updateItems(prev => prev.map(item => item.id_producto === id ? savedItem : item));
       setFeedback({ type: 'success', message: `Precio de "${target.nombre}" actualizado.` });
       setEditingId(null);
     } catch (err) {
       console.error(err);
       if (!isOfflinePersistenceError(err)) {
-        setItems(prev => prev.map(item => item.id_producto === id ? { ...item, precio_venta: target.precio_venta } : item));
+        updateItems(prev => prev.map(item => item.id_producto === id ? { ...item, precio_venta: target.precio_venta } : item));
       }
       setFeedback({
         type: 'warning',
