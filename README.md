@@ -24,7 +24,9 @@ npm install
 
 ## Configuración
 
-Copiar `.env.example` a `.env.local` y completar al menos las credenciales del acceso:
+Copiar `.env.example` a `.env.local`. El acceso puede validarse con Supabase Auth si `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` están configurados y el usuario ingresa un email registrado.
+
+Para uso local sin Supabase Auth, completar las credenciales fallback:
 
 ```env
 VITE_ADMIN_USERNAME="tu-usuario"
@@ -40,7 +42,7 @@ VITE_SUPABASE_ANON_KEY="tu-anon-key"
 
 Luego ejecutar en Supabase SQL Editor el script `supabase/RUN_THIS_IN_SUPABASE.sql` o la migración correspondiente si el proyecto está vacío. Desde el módulo `Sistema` se puede probar conexión, sembrar datos o descargar datos remotos.
 
-Nota de seguridad: el login actual es una barrera de interfaz para operación local. Antes de exponer la app públicamente, reemplazarlo por Supabase Auth o por sesiones de backend.
+Nota de seguridad: las credenciales `VITE_ADMIN_*` son un fallback de operación local. Para exponer la app públicamente, usar Supabase Auth y políticas RLS restrictivas.
 
 ## Desarrollo
 

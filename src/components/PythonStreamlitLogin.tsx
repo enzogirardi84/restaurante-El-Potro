@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, User, Loader2, ArrowRight } from 'lucide-react';
 import ElPatronLogo from './ElPatronLogo';
+import { tryGetActiveSupabaseClient } from '../lib/supabaseClient';
 
 interface PythonStreamlitLoginProps {
   onLoginSuccess: () => void;
@@ -22,23 +23,40 @@ export default function PythonStreamlitLogin({ onLoginSuccess }: PythonStreamlit
   const loginConfig = getLoginConfig();
   const isLoginConfigured = Boolean(loginConfig.username && loginConfig.password);
 
-  const executeLogin = (e?: React.FormEvent) => {
+  const executeLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (!isLoginConfigured) {
-      setError('Faltan configurar VITE_ADMIN_USERNAME y VITE_ADMIN_PASSWORD en el entorno.');
-      return;
+    setError(null);
+    setIsLoggingIn(true);
+
+    const cleanUsername = username.trim();
+    const supabase = tryGetActiveSupabaseClient();
+
+    if (supabase && cleanUsername.includes('@')) {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: cleanUsername,
+        password
+      });
+
+      if (!authError) {
+        onLoginSuccess();
+        return;
+      }
     }
 
-    if (username.trim().toLowerCase() === loginConfig.username && password === loginConfig.password) {
-      setError(null);
-      setIsLoggingIn(true);
+    if (isLoginConfigured && cleanUsername.toLowerCase() === loginConfig.username && password === loginConfig.password) {
       setTimeout(() => {
         onLoginSuccess();
       }, 700);
-    } else {
-      setError('Credenciales de acceso inválidas. Compruebe los datos e intente nuevamente.');
+      return;
     }
+
+    setIsLoggingIn(false);
+    setError(
+      isLoginConfigured
+        ? 'Credenciales de acceso inválidas. Compruebe los datos e intente nuevamente.'
+        : 'Configure Supabase Auth o defina VITE_ADMIN_USERNAME y VITE_ADMIN_PASSWORD en el entorno.'
+    );
   };
 
   return (
@@ -91,7 +109,7 @@ export default function PythonStreamlitLogin({ onLoginSuccess }: PythonStreamlit
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Usuario"
+                    placeholder="Usuario o email"
                     className="w-full pl-10 pr-4 py-2.5 text-sm border border-stone-200 focus:border-[#4A2D1B] focus:ring-1 focus:ring-[#4A2D1B] rounded-xl bg-stone-50/50 focus:outline-none transition-all placeholder:text-stone-300 font-sans font-medium"
                   />
                 </div>
