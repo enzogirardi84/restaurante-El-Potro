@@ -71,6 +71,7 @@ import {
   dbFetchInsumos,
   dbFetchProductosMenu,
   dbFetchRecetas,
+  dbFetchPedidos,
   dbSavePedidoComplex,
   dbUpsertMesas,
   dbUpsertInsumos,
@@ -345,6 +346,7 @@ export default function App() {
         const dbInsumos = await dbFetchInsumos();
         const dbProducts = await dbFetchProductosMenu();
         const dbRecipes = await dbFetchRecetas();
+        const dbPedidos = await dbFetchPedidos();
         const dbMermas = await dbFetchMermas();
 
         if (dbMesas && dbMesas.length > 0) {
@@ -364,6 +366,9 @@ export default function App() {
         if (dbRecipes && dbRecipes.length > 0) {
           setRecetas(dbRecipes);
         }
+        if (dbPedidos && dbPedidos.length > 0) {
+          setPedidos(dbPedidos);
+        }
         if (dbMermas && dbMermas.length > 0) {
           setMermas(dbMermas);
         }
@@ -381,12 +386,14 @@ export default function App() {
     insumos?: Insumo[];
     productosMenu?: ProductoMenu[];
     recetas?: RecetaEscandallo[];
+    pedidos?: Pedido[];
     mermas?: Merma[];
   }) => {
     if (newData.mesas) setMesas(newData.mesas);
     if (newData.insumos) setInsumos(newData.insumos);
     if (newData.productosMenu) setProductosMenu(newData.productosMenu);
     if (newData.recetas) setRecetas(newData.recetas);
+    if (newData.pedidos) setPedidos(newData.pedidos);
     if (newData.mermas) setMermas(newData.mermas);
   };
 
@@ -1247,6 +1254,7 @@ export default function App() {
             <div className="animate-fadeIn">
               <MenuModule
                 productosMenu={productosMenu}
+                onProductosMenuChange={setProductosMenu}
                 addLog={addLog}
               />
             </div>

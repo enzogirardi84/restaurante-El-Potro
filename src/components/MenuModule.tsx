@@ -3,12 +3,33 @@ import { UtensilsCrossed, Plus, Search, Edit2, Check, RefreshCw } from 'lucide-r
 import { ProductoMenu } from '../types';
 import { menuService } from '../services/menuService';
 
+const MENU_CATEGORIES = ['Entradas', 'Pastas', 'Carnes', 'Pescados', 'Comidas Criollas', 'Postres', 'Bebidas', 'Bodega'] as const;
+
+type Feedback = {
+  type: 'success' | 'warning' | 'error';
+  message: string;
+};
+
+const makeClientId = () => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `prod_custom_${crypto.randomUUID()}`;
+  }
+  return `prod_custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const isOfflinePersistenceError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error || '');
+  return message.toLowerCase().includes('supabase no esta configurado')
+    || message.toLowerCase().includes('supabase no está configurado');
+};
+
 interface MenuModuleProps {
   productosMenu: ProductoMenu[];
+  onProductosMenuChange?: (productos: ProductoMenu[]) => void;
   addLog: (tipo: any, mensaje: string) => void;
 }
 
-export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
+export default function MenuModule({ productosMenu, onProductosMenuChange, addLog }: MenuModuleProps) {
   const [items, setItems] = useState<ProductoMenu[]>(productosMenu);
 
   useEffect(() => {
@@ -28,10 +49,33 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
   // Edit states
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrecio, setEditPrecio] = useState('');
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
-  const handleCreateItem = (e: React.FormEvent) => {
+  const updateItems = (updater: (current: ProductoMenu[]) => ProductoMenu[]) => {
+    setItems(current => {
+      const next = updater(current);
+      onProductosMenuChange?.(next);
+      return next;
+    });
+  };
+
+  const handleCreateItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nombre || !precio) return;
+    const cleanName = nombre.trim();
+    const cleanDescription = descripcion.trim();
+    const cleanImageUrl = imagenUrl.trim();
+    const parsedPrice = Number(precio);
+
+    if (!cleanName) {
+      setFeedback({ type: 'error', message: 'Ingrese un nombre para el producto.' });
+      return;
+    }
+
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      setFeedback({ type: 'error', message: 'Ingrese un precio mayor a cero.' });
+      return;
+    }
 
     const fallbackImg = (categoria === 'Bebidas' || categoria === 'Bodega')
       ? 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&q=80'
@@ -50,36 +94,72 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
     const requiere_cocina = !(categoria === 'Bebidas' || categoria === 'Bodega');
 
     const newItem: ProductoMenu = {
-      id_producto: `prod_custom_${Date.now()}`,
-      nombre,
-      descripcion: descripcion || `${nombre} elaborado con ingredientes selectos.`,
-      precio_venta: parseFloat(precio),
+      id_producto: makeClientId(),
+      nombre: cleanName,
+      descripcion: cleanDescription || `${cleanName} elaborado con ingredientes selectos.`,
+      precio_venta: parsedPrice,
       categoria,
       activo: true,
-      imagen: imagenUrl || fallbackImg,
+      imagen: cleanImageUrl || fallbackImg,
       tipo,
       requiere_cocina,
       tiempo_preparacion_estimado: requiere_cocina ? 12 : undefined
     };
 
-    setItems(prev => [newItem, ...prev]);
-    menuService.create(newItem).catch(err => console.error(err));
-    addLog('sistema', `MENÚ: Creado nuevo platillo/bebida '${nombre}' con precio de venta $${precio}`);
+    updateItems(prev => [newItem, ...prev]);
+    setSavingId('create');
+
+    try {
+      const savedItem = await menuService.create(newItem);
+      updateItems(prev => prev.map(item => item.id_producto === newItem.id_producto ? savedItem : item));
+      setFeedback({ type: 'success', message: 'Producto guardado en Supabase.' });
+    } catch (err) {
+      console.error(err);
+      setFeedback({
+        type: 'warning',
+        message: isOfflinePersistenceError(err)
+          ? 'Producto agregado solo en esta sesión. Configure Supabase para persistir cambios.'
+          : 'Producto agregado localmente, pero no se pudo guardar en Supabase.'
+      });
+    } finally {
+      setSavingId(null);
+    }
+
+    addLog('sistema', `MENÚ: Creado nuevo platillo/bebida '${cleanName}' con precio de venta $${parsedPrice}`);
     setNombre('');
+    setDescripcion('');
     setPrecio('');
     setImagenUrl('');
   };
 
-  const handleToggleActivo = (id: string) => {
-    setItems(prev => prev.map(item => {
-      if (item.id_producto === id) {
-        const nextState = !item.activo;
-        menuService.update(id, { activo: nextState }).catch(err => console.error(err));
-        addLog('sistema', `MENÚ: Cambiado estado de '${item.nombre}' a ${nextState ? 'ACTIVO' : 'INACTIVO'}`);
-        return { ...item, activo: nextState };
+  const handleToggleActivo = async (id: string) => {
+    const target = items.find(item => item.id_producto === id);
+    if (!target) return;
+
+    const nextState = !target.activo;
+    updateItems(prev => prev.map(item => item.id_producto === id ? { ...item, activo: nextState } : item));
+    setSavingId(id);
+
+    try {
+      const savedItem = await menuService.update(id, { activo: nextState });
+      updateItems(prev => prev.map(item => item.id_producto === id ? savedItem : item));
+      setFeedback({ type: 'success', message: `Estado de "${target.nombre}" actualizado.` });
+    } catch (err) {
+      console.error(err);
+      if (!isOfflinePersistenceError(err)) {
+        updateItems(prev => prev.map(item => item.id_producto === id ? { ...item, activo: target.activo } : item));
       }
-      return item;
-    }));
+      setFeedback({
+        type: 'warning',
+        message: isOfflinePersistenceError(err)
+          ? 'Cambio aplicado solo en esta sesión. Configure Supabase para persistirlo.'
+          : 'No se pudo guardar el cambio en Supabase; se restauró el estado anterior.'
+      });
+    } finally {
+      setSavingId(null);
+    }
+
+    addLog('sistema', `MENÚ: Cambiado estado de '${target.nombre}' a ${nextState ? 'ACTIVO' : 'INACTIVO'}`);
   };
 
   const handleStartEditing = (id: string, currentPrice: number) => {
@@ -87,16 +167,40 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
     setEditPrecio(currentPrice.toString());
   };
 
-  const handleSavePrecio = (id: string) => {
-    setItems(prev => prev.map(item => {
-      if (item.id_producto === id) {
-        menuService.update(id, { precio_venta: parseFloat(editPrecio) }).catch(err => console.error(err));
-        addLog('sistema', `MENÚ: Actualizado precio de venta de '${item.nombre}' de $${item.precio_venta} a $${editPrecio}`);
-        return { ...item, precio_venta: parseFloat(editPrecio) };
+  const handleSavePrecio = async (id: string) => {
+    const target = items.find(item => item.id_producto === id);
+    const parsedPrice = Number(editPrecio);
+
+    if (!target) return;
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      setFeedback({ type: 'error', message: 'Ingrese un precio mayor a cero.' });
+      return;
+    }
+
+    updateItems(prev => prev.map(item => item.id_producto === id ? { ...item, precio_venta: parsedPrice } : item));
+    setSavingId(id);
+
+    try {
+      const savedItem = await menuService.update(id, { precio_venta: parsedPrice });
+      updateItems(prev => prev.map(item => item.id_producto === id ? savedItem : item));
+      setFeedback({ type: 'success', message: `Precio de "${target.nombre}" actualizado.` });
+      setEditingId(null);
+    } catch (err) {
+      console.error(err);
+      if (!isOfflinePersistenceError(err)) {
+        updateItems(prev => prev.map(item => item.id_producto === id ? { ...item, precio_venta: target.precio_venta } : item));
       }
-      return item;
-    }));
-    setEditingId(null);
+      setFeedback({
+        type: 'warning',
+        message: isOfflinePersistenceError(err)
+          ? 'Precio actualizado solo en esta sesión. Configure Supabase para persistirlo.'
+          : 'No se pudo guardar el precio en Supabase; se restauró el valor anterior.'
+      });
+    } finally {
+      setSavingId(null);
+    }
+
+    addLog('sistema', `MENÚ: Actualizado precio de venta de '${target.nombre}' de $${target.precio_venta} a $${parsedPrice}`);
   };
 
   // Filter items
@@ -117,6 +221,17 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
             Nuevo Plato / Bebida
           </h3>
           <form onSubmit={handleCreateItem} className="space-y-3">
+            {feedback && (
+              <div className={`rounded-xl border px-3 py-2 text-[11px] font-bold ${
+                feedback.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                  : feedback.type === 'warning'
+                    ? 'bg-amber-50 text-amber-800 border-amber-100'
+                    : 'bg-rose-50 text-rose-700 border-rose-100'
+              }`}>
+                {feedback.message}
+              </div>
+            )}
             <div>
               <label className="text-[10px] font-black text-stone-500 uppercase tracking-wider block mb-1">Nombre Comercial</label>
               <input 
@@ -156,14 +271,9 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
                 onChange={e => setCategoria(e.target.value)}
                 className="w-full text-xs p-2.5 rounded-xl border border-stone-200 bg-stone-50/50 focus:outline-none focus:ring-1 focus:ring-[#624A3E] cursor-pointer font-bold text-stone-700"
               >
-                <option value="Entradas">Entradas</option>
-                <option value="Pastas">Pastas</option>
-                <option value="Carnes">Carnes</option>
-                <option value="Pescados">Pescados</option>
-                <option value="Comidas Criollas">Comidas Criollas</option>
-                <option value="Postres">Postres</option>
-                <option value="Bebidas">Bebidas</option>
-                <option value="Bodega">Bodega</option>
+                {MENU_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -178,9 +288,11 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
             </div>
             <button 
               type="submit"
-              className="w-full py-2.5 bg-[#624A3E] hover:bg-[#503C32] text-white text-xs font-extrabold rounded-xl transition-all shadow-md shadow-[#624A3E]/10 cursor-pointer"
+              disabled={savingId === 'create'}
+              className="w-full py-2.5 bg-[#624A3E] hover:bg-[#503C32] disabled:bg-stone-300 text-white text-xs font-extrabold rounded-xl transition-all shadow-md shadow-[#624A3E]/10 cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Registrar en Carta
+              {savingId === 'create' && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+              {savingId === 'create' ? 'Guardando...' : 'Registrar en Carta'}
             </button>
           </form>
         </div>
@@ -195,7 +307,7 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
 
             {/* Filter tags */}
             <div className="flex flex-wrap gap-1">
-              {(['todos', 'Entradas', 'Pastas', 'Carnes', 'Pescados', 'Comidas Criollas', 'Postres', 'Bebidas', 'Bodega'] as const).map(cat => (
+              {(['todos', ...MENU_CATEGORIES] as const).map(cat => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategoria(cat)}
@@ -258,9 +370,10 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
                         />
                         <button 
                           onClick={() => handleSavePrecio(item.id_producto)}
+                          disabled={savingId === item.id_producto}
                           className="p-1 rounded bg-[#22C55E]/15 hover:bg-[#22C55E]/20 text-[#22C55E] cursor-pointer"
                         >
-                          <Check className="w-3.5 h-3.5" />
+                          {savingId === item.id_producto ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     ) : (
@@ -282,13 +395,14 @@ export default function MenuModule({ productosMenu, addLog }: MenuModuleProps) {
                     </span>
                     <button 
                       onClick={() => handleToggleActivo(item.id_producto)}
-                      className={`text-[9px] font-black px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                      disabled={savingId === item.id_producto}
+                      className={`text-[9px] font-black px-1.5 py-0.5 rounded cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-wait ${
                         item.activo 
                           ? 'bg-rose-50 hover:bg-rose-100 text-rose-600' 
                           : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
                       }`}
                     >
-                      {item.activo ? 'Retirar' : 'Habilitar'}
+                      {savingId === item.id_producto ? 'Guardando' : item.activo ? 'Retirar' : 'Habilitar'}
                     </button>
                   </div>
                 </div>

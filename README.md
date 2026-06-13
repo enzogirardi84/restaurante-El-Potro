@@ -7,7 +7,7 @@ Aplicación web para administrar la operación diaria de un restaurante: menú p
 - Vite + React 19 + TypeScript
 - Tailwind CSS 4
 - Supabase JS para persistencia remota opcional
-- Streamlit para panel auxiliar de diagnostico Supabase
+- Streamlit para panel auxiliar de diagnóstico Supabase
 - jsPDF para comprobantes descargables
 - Datos iniciales locales para modo demo/offline
 
@@ -24,22 +24,25 @@ npm install
 
 ## Configuración
 
-La app puede ejecutarse sin Supabase usando los datos locales de demostración.
+Copiar `.env.example` a `.env.local`. El acceso puede validarse con Supabase Auth si `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` están configurados y el usuario ingresa un email registrado.
 
-El alcance funcional completo del sistema está documentado en `PROMPT_COMPLETO.md`, que conecta los pedidos de menú principal, logo, platos, bebidas, inventario, cocina, caja, PDF/ticketera, Supabase y Streamlit.
+Para uso local sin Supabase Auth, completar las credenciales fallback:
 
-Para conectar Supabase:
+```env
+VITE_ADMIN_USERNAME="tu-usuario"
+VITE_ADMIN_PASSWORD="tu-clave"
+```
 
-1. Copiar `.env.example` a `.env.local`.
-2. Completar:
+La app puede ejecutarse sin Supabase usando los datos locales de demostración. Para conectar Supabase:
 
 ```env
 VITE_SUPABASE_URL="https://tu-proyecto.supabase.co"
 VITE_SUPABASE_ANON_KEY="tu-anon-key"
 ```
 
-3. Ejecutar la migración SQL ubicada en `supabase/migrations/20260612000000_create_schema.sql`.
-4. Abrir el módulo `Sistema` dentro de la app para probar conexión, sembrar datos o descargar datos remotos.
+Luego ejecutar en Supabase SQL Editor el script `supabase/RUN_THIS_IN_SUPABASE.sql` o la migración correspondiente si el proyecto está vacío. Desde el módulo `Sistema` se puede probar conexión, sembrar datos o descargar datos remotos.
+
+Nota de seguridad: las credenciales `VITE_ADMIN_*` son un fallback de operación local. Para exponer la app públicamente, usar Supabase Auth y políticas RLS restrictivas.
 
 ## Desarrollo
 
@@ -53,13 +56,6 @@ La app levanta en:
 http://localhost:3000
 ```
 
-Credenciales demo:
-
-```text
-Usuario: sistema
-Contraseña: restaurante
-```
-
 ## Verificación
 
 ```bash
@@ -69,30 +65,14 @@ npm run build
 
 ## Panel Streamlit + Supabase
 
-El repositorio incluye un panel Streamlit opcional para revisar la conexion con Supabase, validar tablas y consultar datos rapidos.
-El tablero muestra KPIs operativos, alertas de stock bajo minimo, distribucion del menu, comandas, caja, salud de tablas y un explorador con descarga CSV.
-
-1. Instalar dependencias Python:
+El repositorio incluye un panel Streamlit opcional para revisar la conexión con Supabase, validar tablas y consultar datos rápidos.
 
 ```bash
 pip install -r requirements.txt
-```
-
-2. Copiar `.streamlit/secrets.toml.example` a `.streamlit/secrets.toml`.
-3. Completar las variables locales:
-
-```toml
-SUPABASE_URL = "https://tu-proyecto.supabase.co"
-SUPABASE_ANON_KEY = "tu-anon-key"
-```
-
-4. Ejecutar:
-
-```bash
 streamlit run streamlit_app.py
 ```
 
-Para Streamlit Cloud, cargar los mismos valores en `App settings > Secrets`. El archivo `.streamlit/secrets.toml` esta ignorado por Git para evitar subir claves reales.
+Para Streamlit Cloud, cargar los valores de Supabase en `App settings > Secrets`.
 
 ## Limpieza
 
@@ -117,9 +97,3 @@ npm run clean
 - Reportes / BI
 - Sistema y Supabase
 - Backups
-
-## Notas de seguridad
-
-- No se incluyen credenciales reales en el repositorio.
-- La conexión Supabase es opcional y no usa URL ni clave hardcodeada.
-- Las políticas RLS de la migración son abiertas para desarrollo/demo. Para producción, restringirlas por usuario, rol y operación.
