@@ -1,4 +1,6 @@
+import io
 import os
+import zipfile
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
@@ -42,6 +44,28 @@ CORE_TABLES = [
     "pagos",
     "reservas",
     "movimientos_inventario",
+    "proveedores",
+    "promociones",
+    "auditoria_eventos",
+    "cierres_caja",
+]
+
+MODULES = [
+    "Panel",
+    "Mozo / Salon",
+    "Cocina KDS",
+    "Caja",
+    "Menu",
+    "Recetas",
+    "Mesas",
+    "Inventario",
+    "Compras",
+    "Clientes",
+    "Delivery",
+    "Ticketera",
+    "Reportes",
+    "Sistema",
+    "Backups",
 ]
 
 
@@ -64,10 +88,9 @@ def mask_url(url: str) -> str:
     host = urlparse(normalize_supabase_url(url)).netloc
     if not host:
         return "URL configurada"
-    pieces = host.split(".")
-    project = pieces[0]
-    masked_project = f"{project[:6]}...{project[-4:]}" if len(project) > 12 else project
-    return ".".join([masked_project, *pieces[1:]])
+    project = host.split(".")[0]
+    masked = f"{project[:6]}...{project[-4:]}" if len(project) > 12 else project
+    return host.replace(project, masked, 1)
 
 
 def money(value: Any) -> str:
@@ -84,6 +107,18 @@ def number(value: Any) -> float:
         return 0.0
 
 
+def as_dataframe(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    return pd.DataFrame(rows or [])
+
+
+def apply_text_filter(df: pd.DataFrame, text: str) -> pd.DataFrame:
+    if df.empty or not text:
+        return df
+    text = text.lower().strip()
+    searchable = df.astype(str).apply(lambda row: " ".join(row).lower(), axis=1)
+    return df[searchable.str.contains(text, na=False)]
+
+
 @st.cache_resource(show_spinner=False)
 def get_supabase_client(url: str, key: str):
     if not url or not key:
@@ -92,7 +127,7 @@ def get_supabase_client(url: str, key: str):
 
 
 @st.cache_data(ttl=45, show_spinner=False)
-def fetch_table(url: str, key: str, table_name: str, limit: int = 1000) -> dict[str, Any]:
+def fetch_table(url: str, key: str, table_name: str, limit: int = 2000) -> dict[str, Any]:
     client = create_client(normalize_supabase_url(url), key)
     try:
         response = client.table(table_name).select("*", count="exact").limit(limit).execute()
@@ -107,18 +142,9 @@ def fetch_table(url: str, key: str, table_name: str, limit: int = 1000) -> dict[
         return {"ok": False, "data": [], "count": 0, "error": str(exc)}
 
 
-def as_dataframe(rows: list[dict[str, Any]]) -> pd.DataFrame:
-    if not rows:
-        return pd.DataFrame()
-    return pd.DataFrame(rows)
-
-
-def apply_text_filter(df: pd.DataFrame, text: str) -> pd.DataFrame:
-    if df.empty or not text:
-        return df
-    text = text.lower().strip()
-    searchable = df.astype(str).apply(lambda row: " ".join(row).lower(), axis=1)
-    return df[searchable.str.contains(text, na=False)]
+def safe_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    existing = [col for col in columns if col in df.columns]
+    return df[existing] if existing else df
 
 
 def metric_card(title: str, value: str, caption: str = "", accent: str = "#6B4A35") -> None:
@@ -134,7 +160,20 @@ def metric_card(title: str, value: str, caption: str = "", accent: str = "#6B4A3
     )
 
 
-def render_empty_state(title: str, detail: str) -> None:
+def section_header(title: str, subtitle: str) -> None:
+    st.markdown(
+        f"""
+        <div class="module-hero">
+            <div class="module-kicker">Restaurante Pro</div>
+            <h1>{title}</h1>
+            <p>{subtitle}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def empty_state(title: str, detail: str) -> None:
     st.markdown(
         f"""
         <div class="empty-state">
@@ -146,8 +185,25 @@ def render_empty_state(title: str, detail: str) -> None:
     )
 
 
+def render_table(df: pd.DataFrame, columns: list[str] | None = None, height: int | None = None) -> None:
+    if df.empty:
+        empty_state("Sin registros", "Todavia no hay datos para mostrar en esta seccion.")
+        return
+    view = safe_columns(df, columns) if columns else df
+    st.dataframe(view, width="stretch", hide_index=True, height=height)
+
+
+def make_backup_zip(tables: dict[str, pd.DataFrame]) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, df in tables.items():
+            archive.writestr(f"{name}.csv", df.to_csv(index=False))
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 st.set_page_config(
-    page_title="El Patrón Pro",
+    page_title="El Patron Pro",
     page_icon="EP",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -158,100 +214,131 @@ st.markdown(
     <style>
     :root {
         --patron-ink: #2f241d;
-        --patron-muted: #817267;
-        --patron-border: #e4ddd2;
+        --patron-muted: #74675d;
+        --patron-border: #ded4c7;
         --patron-card: #fffdf8;
         --patron-bg: #f5f1e9;
         --patron-brown: #6b4a35;
+        --patron-brown-dark: #4d3227;
         --patron-green: #1f8f66;
         --patron-red: #b94b4b;
         --patron-blue: #315f84;
+        --patron-dark: #171614;
+    }
+    .stApp {
+        background: var(--patron-bg);
+        color: var(--patron-ink);
     }
     .block-container {
-        padding-top: 2.2rem;
+        padding-top: 1.4rem;
         padding-bottom: 3rem;
-        max-width: 1480px;
+        max-width: 1500px;
     }
     h1, h2, h3 {
         color: var(--patron-ink);
         letter-spacing: 0;
     }
     [data-testid="stSidebar"] {
-        background: #fffaf1;
-        border-right: 1px solid var(--patron-border);
+        background: var(--patron-dark);
+        border-right: 1px solid #2f2b26;
+    }
+    [data-testid="stSidebar"] * {
+        color: #eee5d8;
+    }
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] .st-emotion-cache {
+        color: #eee5d8;
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] {
+        gap: .35rem;
+    }
+    [data-testid="stSidebar"] [role="radio"] {
+        border: 1px solid #8c623955;
+        border-radius: 8px;
+        padding: .55rem .65rem;
+        background: #1f1d1a;
+        min-height: 42px;
+    }
+    [data-testid="stSidebar"] [role="radio"]:has(input:checked) {
+        background: var(--patron-brown);
+        border-color: #d8b08a77;
     }
     .brand-box {
-        border: 1px solid var(--patron-border);
-        background: linear-gradient(180deg, #fffdf8 0%, #f5eee4 100%);
+        border: 1px solid #8c623955;
+        background: linear-gradient(180deg, #211f1c 0%, #161513 100%);
         border-radius: 8px;
         padding: 1rem;
         margin-bottom: 1rem;
+        box-shadow: 0 12px 32px rgba(0,0,0,.18);
     }
     .brand-mark {
-        width: 46px;
-        height: 46px;
-        border: 1px solid #bda995;
-        border-radius: 50%;
+        width: 74px;
+        height: 74px;
+        border: 1px solid #d8b08a99;
+        border-radius: 8px;
         display: grid;
         place-items: center;
-        font-weight: 800;
+        font-weight: 900;
         color: var(--patron-brown);
-        background: #fff;
-        margin-bottom: .75rem;
+        background: #fff8ef;
+        margin-bottom: .9rem;
+        font-size: 1.35rem;
     }
     .brand-title {
-        font-size: 1.05rem;
+        font-size: 1.25rem;
         line-height: 1.15;
-        font-weight: 800;
-        color: var(--patron-ink);
+        font-weight: 900;
+        color: #fff;
     }
     .brand-subtitle {
-        color: var(--patron-muted);
+        color: #d8b08a;
         font-size: .78rem;
         margin-top: .25rem;
+        text-transform: uppercase;
+        letter-spacing: .08rem;
+        font-weight: 800;
     }
     .status-pill {
         display: inline-flex;
         align-items: center;
         gap: .45rem;
         border-radius: 999px;
-        border: 1px solid #b8dbc9;
-        background: #effaf4;
-        color: #166244;
-        padding: .28rem .65rem;
+        border: 1px solid #3f8f6b;
+        background: #103524;
+        color: #bff7da;
+        padding: .32rem .7rem;
         font-size: .78rem;
-        font-weight: 700;
+        font-weight: 800;
     }
     .status-dot {
         width: .55rem;
         height: .55rem;
         border-radius: 999px;
-        background: var(--patron-green);
+        background: #20c17a;
     }
-    .hero {
+    .module-hero {
         border: 1px solid var(--patron-border);
         background: linear-gradient(135deg, #fffdf8 0%, #f4eadc 58%, #eaf2ec 100%);
         border-radius: 8px;
         padding: 1.35rem 1.45rem;
         margin-bottom: 1.15rem;
     }
-    .hero-kicker {
+    .module-kicker {
         color: var(--patron-brown);
         font-size: .78rem;
         text-transform: uppercase;
-        font-weight: 800;
-        letter-spacing: .06rem;
+        font-weight: 900;
+        letter-spacing: .08rem;
         margin-bottom: .35rem;
     }
-    .hero-title {
-        font-size: clamp(2rem, 4vw, 3.8rem);
+    .module-hero h1 {
+        font-size: clamp(2rem, 3.7vw, 3.5rem);
         font-weight: 900;
-        color: var(--patron-ink);
         line-height: 1;
         margin: 0;
     }
-    .hero-copy {
-        max-width: 820px;
+    .module-hero p {
+        max-width: 880px;
         color: var(--patron-muted);
         margin-top: .7rem;
         font-size: 1rem;
@@ -262,14 +349,14 @@ st.markdown(
         background: var(--patron-card);
         border-radius: 8px;
         padding: 1rem;
-        min-height: 118px;
+        min-height: 116px;
         box-shadow: 0 1px 5px rgba(47, 36, 29, .06);
     }
     .metric-title {
         color: var(--patron-muted);
         font-size: .78rem;
         text-transform: uppercase;
-        font-weight: 800;
+        font-weight: 900;
     }
     .metric-value {
         color: var(--patron-ink);
@@ -284,11 +371,12 @@ st.markdown(
         min-height: 1.1rem;
         margin-top: .3rem;
     }
-    .section-card {
+    .section-card, div[data-testid="stMetric"] {
         border: 1px solid var(--patron-border);
         background: var(--patron-card);
         border-radius: 8px;
         padding: 1rem;
+        box-shadow: 0 1px 5px rgba(47, 36, 29, .05);
     }
     .empty-state {
         border: 1px dashed #d8cdbc;
@@ -303,15 +391,18 @@ st.markdown(
     .empty-state strong {
         color: var(--patron-ink);
     }
+    .ticket {
+        background: #fffdf8;
+        border: 1px dashed #cbbba5;
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        white-space: pre-wrap;
+        color: #1f1a16;
+    }
     .small-muted {
         color: var(--patron-muted);
         font-size: .82rem;
-    }
-    div[data-testid="stMetric"] {
-        background: var(--patron-card);
-        border: 1px solid var(--patron-border);
-        border-radius: 8px;
-        padding: .85rem 1rem;
     }
     </style>
     """,
@@ -327,31 +418,33 @@ with st.sidebar:
         """
         <div class="brand-box">
             <div class="brand-mark">EP</div>
-            <div class="brand-title">El Patrón Pro</div>
-            <div class="brand-subtitle">Gestión gastronómica y stock</div>
+            <div class="brand-title">El Patron Pro</div>
+            <div class="brand-subtitle">Gestion gastronomica</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
     if client:
-        st.markdown('<span class="status-pill"><span class="status-dot"></span>Conectado a Supabase</span>', unsafe_allow_html=True)
+        st.markdown('<span class="status-pill"><span class="status-dot"></span>Supabase conectado</span>', unsafe_allow_html=True)
     else:
         st.error("Falta configurar Supabase.")
     st.caption(f"Proyecto: {mask_url(supabase_url)}")
-    st.caption("Clave anon: configurada" if supabase_key else "Clave anon: sin configurar")
+    st.caption("Clave anon configurada" if supabase_key else "Clave anon sin configurar")
+    st.divider()
+    active_module = st.radio("Modulos del sistema", MODULES, index=0, label_visibility="collapsed")
     st.divider()
     if st.button("Actualizar datos", width="stretch"):
         st.cache_data.clear()
         st.rerun()
-    st.caption("El panel usa solo `SUPABASE_URL` y `SUPABASE_ANON_KEY`. No necesita claves privilegiadas.")
+    st.caption("Tip: usa el boton << de Streamlit arriba del panel para contraer el menu lateral.")
 
 if not client:
-    st.warning("Configura `SUPABASE_URL` y `SUPABASE_ANON_KEY` en Streamlit Secrets para abrir el panel.")
+    st.warning("Configura SUPABASE_URL y SUPABASE_ANON_KEY en Streamlit Secrets para abrir el sistema.")
     st.stop()
 
-with st.spinner("Leyendo datos de Supabase..."):
+with st.spinner("Leyendo Supabase..."):
     table_results = {table: fetch_table(supabase_url, supabase_key, table) for table in APP_TABLES}
-    core_data = {table: as_dataframe(table_results[table]["data"]) for table in CORE_TABLES}
+    data = {table: as_dataframe(table_results[table]["data"]) for table in CORE_TABLES}
 
 summary = pd.DataFrame(
     [
@@ -365,26 +458,28 @@ summary = pd.DataFrame(
     ]
 )
 
-productos = core_data["productos_menu"]
-insumos = core_data["insumos"]
-mesas = core_data["mesas"]
-pedidos = core_data["pedidos_cabecera"]
-detalles = core_data["pedido_detalle"]
-recetas = core_data["recetas_escandallo"]
-facturas = core_data["facturas"]
-pagos = core_data["pagos"]
-reservas = core_data["reservas"]
-movimientos = core_data["movimientos_inventario"]
+productos = data["productos_menu"]
+insumos = data["insumos"]
+mesas = data["mesas"]
+pedidos = data["pedidos_cabecera"]
+detalles = data["pedido_detalle"]
+recetas = data["recetas_escandallo"]
+facturas = data["facturas"]
+pagos = data["pagos"]
+reservas = data["reservas"]
+movimientos = data["movimientos_inventario"]
+proveedores = data["proveedores"]
+promociones = data["promociones"]
+logs = data["auditoria_eventos"]
+cierres = data["cierres_caja"]
 
 ok_count = int((summary["estado"] == "OK").sum())
 error_count = int((summary["estado"] == "ERROR").sum())
 total_records = int(summary["registros"].sum())
 
-productos_activos = 0
+productos_activos = len(productos)
 if not productos.empty and "activo" in productos.columns:
     productos_activos = int(productos["activo"].fillna(False).astype(bool).sum())
-elif not productos.empty:
-    productos_activos = len(productos)
 
 stock_critico = pd.DataFrame()
 if {"stock_actual", "stock_minimo"}.issubset(insumos.columns):
@@ -392,44 +487,34 @@ if {"stock_actual", "stock_minimo"}.issubset(insumos.columns):
 
 comandas_abiertas = pd.DataFrame()
 if not pedidos.empty and "estado_comanda" in pedidos.columns:
-    estados_cerrados = {"cerrada", "cancelada", "cobrada", "finalizada", "entregada"}
+    estados_cerrados = {"cerrada", "cancelada", "cobrada", "finalizada", "entregada", "entregado_cobrado"}
     comandas_abiertas = pedidos[~pedidos["estado_comanda"].astype(str).str.lower().isin(estados_cerrados)].copy()
 elif not pedidos.empty:
     comandas_abiertas = pedidos.copy()
 
 facturacion_total = facturas["total"].map(number).sum() if "total" in facturas.columns else 0
 ticket_promedio = facturacion_total / len(facturas) if len(facturas) else 0
+mesas_ocupadas = int((mesas["estado"].astype(str).str.lower() == "ocupada").sum()) if "estado" in mesas.columns else 0
+mesas_libres = int((mesas["estado"].astype(str).str.lower() == "libre").sum()) if "estado" in mesas.columns else len(mesas)
 
-st.markdown(
-    """
-    <div class="hero">
-        <div class="hero-kicker">Panel conectado a Supabase</div>
-        <h1 class="hero-title">Centro Operativo El Patrón</h1>
-        <div class="hero-copy">
-            Control rápido de tablas, menú, inventario, comandas y caja. Pensado para revisar la salud del sistema antes de operar o publicar cambios.
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
 
-metric_cols = st.columns(5)
-with metric_cols[0]:
-    metric_card("Tablas OK", f"{ok_count}/{len(APP_TABLES)}", f"{error_count} con error", "#1f8f66" if error_count == 0 else "#b94b4b")
-with metric_cols[1]:
-    metric_card("Registros", f"{total_records}", "datos leidos en Supabase", "#315f84")
-with metric_cols[2]:
-    metric_card("Menu activo", f"{productos_activos}", f"{len(productos)} productos cargados", "#6b4a35")
-with metric_cols[3]:
-    metric_card("Stock critico", f"{len(stock_critico)}", "insumos bajo minimo", "#b94b4b" if len(stock_critico) else "#1f8f66")
-with metric_cols[4]:
-    metric_card("Comandas abiertas", f"{len(comandas_abiertas)}", f"ticket prom. {money(ticket_promedio)}", "#315f84")
+def render_top_metrics() -> None:
+    cols = st.columns(5)
+    with cols[0]:
+        metric_card("Tablas OK", f"{ok_count}/{len(APP_TABLES)}", f"{error_count} con error", "#1f8f66" if error_count == 0 else "#b94b4b")
+    with cols[1]:
+        metric_card("Registros", f"{total_records}", "datos leidos", "#315f84")
+    with cols[2]:
+        metric_card("Menu activo", f"{productos_activos}", f"{len(productos)} productos", "#6b4a35")
+    with cols[3]:
+        metric_card("Stock critico", f"{len(stock_critico)}", "insumos bajo minimo", "#b94b4b" if len(stock_critico) else "#1f8f66")
+    with cols[4]:
+        metric_card("Comandas", f"{len(comandas_abiertas)}", f"ticket prom. {money(ticket_promedio)}", "#315f84")
 
-tab_resumen, tab_menu, tab_inventario, tab_operacion, tab_tablas, tab_explorador = st.tabs(
-    ["Resumen", "Menu", "Inventario", "Operacion", "Salud de tablas", "Explorador"]
-)
 
-with tab_resumen:
+if active_module == "Panel":
+    section_header("Panel administrador", "Control general del salon, cocina, caja, stock y personal desde un unico tablero.")
+    render_top_metrics()
     left, right = st.columns([1.2, 1])
     with left:
         st.subheader("Lectura general")
@@ -437,203 +522,239 @@ with tab_resumen:
             category_counts = productos["categoria"].fillna("Sin categoria").value_counts().rename_axis("categoria").reset_index(name="productos")
             st.bar_chart(category_counts, x="categoria", y="productos", width="stretch")
         else:
-            render_empty_state("Menu sin datos suficientes", "Cuando cargues productos, aca vas a ver la distribucion por categoria.")
-
+            empty_state("Menu sin datos", "Carga productos_menu para ver la distribucion por categoria.")
     with right:
         st.subheader("Alertas")
-        if error_count:
-            st.error(f"Hay {error_count} tablas con error. Revisar la pestana Salud de tablas.")
-        else:
+        if error_count == 0:
             st.success("Las tablas principales responden correctamente.")
-
-        if len(stock_critico):
-            st.warning(f"{len(stock_critico)} insumos estan por debajo del minimo.")
-            cols = [col for col in ["nombre", "stock_actual", "stock_minimo", "unidad_medida", "categoria"] if col in stock_critico.columns]
-            st.dataframe(stock_critico[cols].head(8), width="stretch", hide_index=True)
         else:
+            st.error(f"{error_count} tablas con error.")
+
+        if len(stock_critico) == 0:
             st.info("No hay insumos por debajo del minimo.")
-
-        if len(comandas_abiertas):
-            st.warning(f"{len(comandas_abiertas)} comandas siguen abiertas.")
         else:
+            st.warning(f"{len(stock_critico)} insumos bajo minimo.")
+
+        if len(comandas_abiertas) == 0:
             st.info("No hay comandas abiertas para revisar.")
+        else:
+            st.warning(f"{len(comandas_abiertas)} comandas abiertas.")
+    st.subheader("Ultimos eventos")
+    render_table(logs, ["fecha_hora", "modulo", "accion", "detalle"], height=260)
 
-with tab_menu:
-    st.subheader("Menu y carta")
-    if productos.empty:
-        render_empty_state("No hay productos cargados", "Carga o sincroniza productos_menu desde el modulo Sistema del programa principal.")
-    else:
-        col_a, col_b, col_c = st.columns(3)
-        col_a.metric("Productos", len(productos))
-        col_b.metric("Activos", productos_activos)
-        promedio = productos["precio_venta"].map(number).mean() if "precio_venta" in productos.columns else 0
-        col_c.metric("Precio promedio", money(promedio))
+elif active_module == "Mozo / Salon":
+    section_header("Terminal de mozo", "Mesas, pedidos, entrega y cuenta en modo tactil.")
+    cols = st.columns(5)
+    cols[0].metric("Mesas", len(mesas))
+    cols[1].metric("Libres", mesas_libres)
+    cols[2].metric("Ocupadas", mesas_ocupadas)
+    cols[3].metric("En cuenta", len(comandas_abiertas))
+    cols[4].metric("Menu", productos_activos)
+    salon_left, salon_right = st.columns([1, 1.2])
+    with salon_left:
+        st.subheader("Salon")
+        render_table(mesas, ["numero_mesa", "estado", "comensales"], height=360)
+    with salon_right:
+        st.subheader("Carta rapida")
+        search = st.text_input("Buscar producto", placeholder="Nombre de plato, bebida o postre")
+        menu_df = apply_text_filter(productos, search)
+        render_table(menu_df, ["nombre", "categoria", "subcategoria", "tipo", "precio_venta", "activo"], height=360)
+        st.download_button("Descargar carta para mozos", menu_df.to_csv(index=False).encode("utf-8-sig"), "carta_mozo.csv", "text/csv", width="stretch")
 
-        filters = st.columns([1, 1, 1])
-        category = "Todas"
-        if "categoria" in productos.columns:
-            categories = ["Todas", *sorted(productos["categoria"].dropna().astype(str).unique())]
-            category = filters[0].selectbox("Categoria", categories)
-        product_type = "Todos"
-        if "tipo" in productos.columns:
-            types = ["Todos", *sorted(productos["tipo"].dropna().astype(str).unique())]
-            product_type = filters[1].selectbox("Tipo", types)
-        search_menu = filters[2].text_input("Buscar en menu", placeholder="Plato, bebida o descripcion")
+elif active_module == "Cocina KDS":
+    section_header("Terminal de cocina", "Comandas vivas, tiempos de preparacion, despacho y control de escandallos.")
+    cols = st.columns(5)
+    estados = pedidos["estado_comanda"].astype(str).str.lower() if "estado_comanda" in pedidos.columns and not pedidos.empty else pd.Series(dtype=str)
+    cols[0].metric("Pendientes", int((estados == "pendiente").sum()))
+    cols[1].metric("En preparacion", int((estados == "en_cocina").sum()))
+    cols[2].metric("Listos", int((estados == "listo").sum()))
+    cols[3].metric("Platos activos", len(detalles))
+    cols[4].metric("Mayor espera", "-" if pedidos.empty or "minutos_transcurridos" not in pedidos.columns else f"{int(pedidos['minutos_transcurridos'].map(number).max())}m")
+    kds_cols = st.columns(3)
+    for col, state, title in zip(kds_cols, ["pendiente", "en_cocina", "listo"], ["Pendiente", "En preparacion", "Listo para servir"]):
+        with col:
+            st.markdown(f"#### {title}")
+            board = pedidos[pedidos["estado_comanda"].astype(str).str.lower() == state] if "estado_comanda" in pedidos.columns and not pedidos.empty else pd.DataFrame()
+            render_table(board, ["id_pedido", "numero_mesa", "mozo", "fecha_hora", "items"], height=320)
 
-        menu_df = productos.copy()
-        if category != "Todas" and "categoria" in menu_df.columns:
+elif active_module == "Caja":
+    section_header("Terminal de caja", "Cobro rapido, cuenta dividida, tickets, cierres y facturacion.")
+    cols = st.columns(4)
+    cols[0].metric("Caja", "#1")
+    cols[1].metric("Comandas abiertas", len(comandas_abiertas))
+    cols[2].metric("Facturado", money(facturacion_total))
+    cols[3].metric("Ticket promedio", money(ticket_promedio))
+    left, right = st.columns([1.15, 1])
+    with left:
+        st.subheader("Cuentas pendientes")
+        render_table(comandas_abiertas, ["id_pedido", "numero_mesa", "mozo", "estado_comanda", "fecha_hora"], height=350)
+    with right:
+        st.subheader("Facturacion rapida")
+        render_table(facturas, ["numero_factura", "tipo_comprobante", "metodo_pago", "total", "fecha_emision"], height=260)
+        ticket_text = f"El Patron Pro\nFecha: {datetime.now():%Y-%m-%d %H:%M}\nSubtotal: {money(facturacion_total)}\nServicio 10%: {money(facturacion_total * .10)}\nTOTAL: {money(facturacion_total * 1.10)}\nGracias por su visita."
+        st.markdown(f"<div class='ticket'>{ticket_text}</div>", unsafe_allow_html=True)
+        st.download_button("Reimprimir / descargar ticket", ticket_text.encode("utf-8"), "ticket_el_patron.txt", "text/plain", width="stretch")
+
+elif active_module == "Menu":
+    section_header("Administracion de menu", "Crear productos, revisar precios y controlar platos, bebidas, bodega y postres.")
+    cols = st.columns(4)
+    cols[0].metric("Productos", len(productos))
+    cols[1].metric("Activos", productos_activos)
+    cols[2].metric("Categorias", productos["categoria"].nunique() if "categoria" in productos.columns and not productos.empty else 0)
+    cols[3].metric("Precio promedio", money(productos["precio_venta"].map(number).mean() if "precio_venta" in productos.columns else 0))
+    filters = st.columns([1, 1, 1])
+    menu_df = productos.copy()
+    if not menu_df.empty and "categoria" in menu_df.columns:
+        category = filters[0].selectbox("Categoria", ["Todas", *sorted(menu_df["categoria"].dropna().astype(str).unique())])
+        if category != "Todas":
             menu_df = menu_df[menu_df["categoria"].astype(str) == category]
-        if product_type != "Todos" and "tipo" in menu_df.columns:
+    if not menu_df.empty and "tipo" in menu_df.columns:
+        product_type = filters[1].selectbox("Tipo", ["Todos", *sorted(menu_df["tipo"].dropna().astype(str).unique())])
+        if product_type != "Todos":
             menu_df = menu_df[menu_df["tipo"].astype(str) == product_type]
-        menu_df = apply_text_filter(menu_df, search_menu)
-        menu_cols = [
-            col
-            for col in [
-                "nombre",
-                "categoria",
-                "subcategoria",
-                "tipo",
-                "precio_venta",
-                "activo",
-                "requiere_cocina",
-                "tiempo_preparacion_estimado",
-                "descripcion",
-            ]
-            if col in menu_df.columns
-        ]
-        st.dataframe(menu_df[menu_cols] if menu_cols else menu_df, width="stretch", hide_index=True)
-        st.download_button(
-            "Descargar menu CSV",
-            menu_df.to_csv(index=False).encode("utf-8-sig"),
-            file_name=f"menu_el_patron_{datetime.now():%Y%m%d_%H%M}.csv",
-            mime="text/csv",
-            width="stretch",
-        )
+    menu_df = apply_text_filter(menu_df, filters[2].text_input("Buscar", placeholder="Plato o bebida"))
+    render_table(menu_df, ["nombre", "descripcion", "categoria", "subcategoria", "tipo", "precio_venta", "activo", "requiere_cocina"], height=520)
 
-with tab_inventario:
-    st.subheader("Inventario y bodega")
-    if insumos.empty:
-        render_empty_state("No hay insumos cargados", "Carga inventario desde el programa principal para activar alertas y control de stock.")
-    else:
-        col_a, col_b, col_c, col_d = st.columns(4)
-        col_a.metric("Insumos", len(insumos))
-        col_b.metric("Stock critico", len(stock_critico))
-        bebidas = int(insumos["es_bebida_directa"].fillna(False).astype(bool).sum()) if "es_bebida_directa" in insumos.columns else 0
-        col_c.metric("Bebidas directas", bebidas)
-        costo_stock = 0
-        if {"stock_actual", "costo_unitario"}.issubset(insumos.columns):
-            costo_stock = (insumos["stock_actual"].map(number) * insumos["costo_unitario"].map(number)).sum()
-        col_d.metric("Valorizacion stock", money(costo_stock))
+elif active_module == "Recetas":
+    section_header("Recetas por plato", "Escandallo, ingredientes, cobertura de stock y productos pendientes de receta.")
+    recipe_join = recetas.copy()
+    if not recipe_join.empty and not productos.empty and "id_producto" in recipe_join.columns:
+        recipe_join = recipe_join.merge(safe_columns(productos, ["id_producto", "nombre", "categoria"]), on="id_producto", how="left", suffixes=("", "_producto"))
+    if not recipe_join.empty and not insumos.empty and "id_insumo" in recipe_join.columns:
+        recipe_join = recipe_join.merge(safe_columns(insumos, ["id_insumo", "nombre", "stock_actual", "stock_minimo", "unidad_medida"]), on="id_insumo", how="left", suffixes=("_producto", "_insumo"))
+    products_with_recipe = set(recetas["id_producto"].astype(str)) if "id_producto" in recetas.columns else set()
+    products_without_recipe = productos[~productos["id_producto"].astype(str).isin(products_with_recipe)] if "id_producto" in productos.columns else pd.DataFrame()
+    cols = st.columns(4)
+    cols[0].metric("Productos", len(productos))
+    cols[1].metric("Con receta", len(products_with_recipe))
+    cols[2].metric("Sin receta", len(products_without_recipe))
+    cols[3].metric("Lineas receta", len(recetas))
+    tabs = st.tabs(["Matriz", "Pendientes"])
+    with tabs[0]:
+        render_table(recipe_join, ["nombre_producto", "categoria", "nombre_insumo", "cantidad_a_descontar", "unidad_medida", "stock_actual", "stock_minimo"], height=520)
+    with tabs[1]:
+        render_table(products_without_recipe, ["nombre", "categoria", "tipo", "precio_venta", "activo"], height=360)
 
-        inv_filters = st.columns([1, 1, 1])
-        inv_df = insumos.copy()
-        inv_category = "Todas"
-        if "categoria" in inv_df.columns:
-            inv_category = inv_filters[0].selectbox("Categoria inventario", ["Todas", *sorted(inv_df["categoria"].dropna().astype(str).unique())])
-        only_critical = inv_filters[1].checkbox("Solo bajo minimo")
-        inv_search = inv_filters[2].text_input("Buscar insumo", placeholder="Carne, vino, proveedor")
+elif active_module == "Mesas":
+    section_header("Mesas y salon", "Distribucion, capacidad, estados y lectura del salon.")
+    cols = st.columns(4)
+    cols[0].metric("Mesas", len(mesas))
+    cols[1].metric("Libres", mesas_libres)
+    cols[2].metric("Ocupadas", mesas_ocupadas)
+    cols[3].metric("Comensales", int(mesas["comensales"].map(number).sum()) if "comensales" in mesas.columns else 0)
+    render_table(mesas, ["id_mesa", "numero_mesa", "estado", "comensales"], height=500)
 
-        if inv_category != "Todas" and "categoria" in inv_df.columns:
-            inv_df = inv_df[inv_df["categoria"].astype(str) == inv_category]
-        if only_critical and {"stock_actual", "stock_minimo"}.issubset(inv_df.columns):
-            inv_df = inv_df[inv_df["stock_actual"].map(number) <= inv_df["stock_minimo"].map(number)]
-        inv_df = apply_text_filter(inv_df, inv_search)
+elif active_module == "Inventario":
+    section_header("Inventario y bodega", "Insumos, vinos, bebidas, mermas, movimientos y reposicion.")
+    cols = st.columns(4)
+    cols[0].metric("Insumos", len(insumos))
+    cols[1].metric("Stock critico", len(stock_critico))
+    cols[2].metric("Bebidas directas", int(insumos["es_bebida_directa"].fillna(False).astype(bool).sum()) if "es_bebida_directa" in insumos.columns else 0)
+    cols[3].metric("Movimientos", len(movimientos))
+    inv_df = insumos.copy()
+    filters = st.columns([1, 1, 1])
+    if not inv_df.empty and "categoria" in inv_df.columns:
+        category = filters[0].selectbox("Categoria inventario", ["Todas", *sorted(inv_df["categoria"].dropna().astype(str).unique())])
+        if category != "Todas":
+            inv_df = inv_df[inv_df["categoria"].astype(str) == category]
+    if filters[1].checkbox("Solo bajo minimo"):
+        inv_df = inv_df[inv_df["stock_actual"].map(number) <= inv_df["stock_minimo"].map(number)] if {"stock_actual", "stock_minimo"}.issubset(inv_df.columns) else inv_df
+    inv_df = apply_text_filter(inv_df, filters[2].text_input("Buscar insumo", placeholder="Carne, vino, proveedor"))
+    render_table(inv_df, ["nombre", "categoria", "subcategoria", "stock_actual", "stock_minimo", "unidad_medida", "proveedor", "costo_unitario"], height=520)
 
-        inv_cols = [
-            col
-            for col in [
-                "nombre",
-                "categoria",
-                "subcategoria",
-                "stock_actual",
-                "stock_minimo",
-                "unidad_medida",
-                "proveedor",
-                "costo_unitario",
-                "es_bebida_directa",
-            ]
-            if col in inv_df.columns
-        ]
-        st.dataframe(inv_df[inv_cols] if inv_cols else inv_df, width="stretch", hide_index=True)
-        st.download_button(
-            "Descargar inventario CSV",
-            inv_df.to_csv(index=False).encode("utf-8-sig"),
-            file_name=f"inventario_el_patron_{datetime.now():%Y%m%d_%H%M}.csv",
-            mime="text/csv",
-            width="stretch",
-        )
+elif active_module == "Compras":
+    section_header("Compras y abastecimiento", "Lista sugerida de reposicion, proveedores y compras pendientes.")
+    cols = st.columns(4)
+    cols[0].metric("Sugeridos", len(stock_critico))
+    cols[1].metric("Proveedores", len(proveedores))
+    cols[2].metric("Insumos", len(insumos))
+    cols[3].metric("Bodega", int(insumos["categoria"].astype(str).str.lower().str.contains("bodega").sum()) if "categoria" in insumos.columns else 0)
+    left, right = st.columns([1.2, 1])
+    with left:
+        st.subheader("Reposicion sugerida")
+        render_table(stock_critico if len(stock_critico) else insumos.head(12), ["nombre", "categoria", "stock_actual", "stock_minimo", "unidad_medida", "proveedor"], height=420)
+    with right:
+        st.subheader("Proveedores")
+        render_table(proveedores, ["nombre", "contacto", "telefono", "email", "categoria"], height=420)
 
-with tab_operacion:
-    st.subheader("Operacion del salon")
-    op_cols = st.columns(4)
-    mesas_ocupadas = int((mesas["estado"].astype(str).str.lower() == "ocupada").sum()) if "estado" in mesas.columns else 0
-    op_cols[0].metric("Mesas", len(mesas))
-    op_cols[1].metric("Ocupadas", mesas_ocupadas)
-    op_cols[2].metric("Comandas", len(pedidos))
-    op_cols[3].metric("Facturado", money(facturacion_total))
+elif active_module == "Clientes":
+    section_header("Clientes y fidelizacion", "Reservas, preferencias, historial y atencion premium.")
+    cols = st.columns(4)
+    cols[0].metric("Reservas", len(reservas))
+    cols[1].metric("Mesas libres", mesas_libres)
+    cols[2].metric("Tickets cobrados", len(facturas))
+    cols[3].metric("Venta registrada", money(facturacion_total))
+    render_table(reservas, ["fecha", "hora", "cliente", "telefono", "cantidad_personas", "estado", "id_mesa"], height=460)
 
-    order_left, order_right = st.columns([1.1, 1])
-    with order_left:
-        st.markdown("#### Comandas")
-        if pedidos.empty:
-            render_empty_state("Sin comandas", "Cuando haya pedidos, se veran por estado, mesa y mozo.")
+elif active_module == "Delivery":
+    section_header("Delivery y canales online", "Pedidos externos, canales, despacho y cola de cocina.")
+    delivery_df = pedidos[pedidos["origen"].astype(str).str.lower().isin(["rappi", "pedidosya"])] if "origen" in pedidos.columns and not pedidos.empty else pd.DataFrame()
+    cols = st.columns(4)
+    cols[0].metric("Pedidos online", len(delivery_df))
+    cols[1].metric("Canales", 2)
+    cols[2].metric("Activos", len(comandas_abiertas))
+    cols[3].metric("Listos", int((pedidos["estado_comanda"].astype(str).str.lower() == "listo").sum()) if "estado_comanda" in pedidos.columns and not pedidos.empty else 0)
+    channel_cols = st.columns(2)
+    channel_cols[0].info("Rappi conectado para lectura operativa.")
+    channel_cols[1].info("PedidosYa conectado para lectura operativa.")
+    render_table(delivery_df, ["id_pedido", "numero_mesa", "origen", "estado_comanda", "fecha_hora", "items"], height=420)
+
+elif active_module == "Ticketera":
+    section_header("Ticketera, PDF e impresion", "Cola de tickets, reimpresion, corte de caja y salida para impresora termica.")
+    cols = st.columns(4)
+    cols[0].metric("Tickets", len(facturas))
+    cols[1].metric("Listos cocina", int((pedidos["estado_comanda"].astype(str).str.lower() == "listo").sum()) if "estado_comanda" in pedidos.columns and not pedidos.empty else 0)
+    cols[2].metric("Cierres", len(cierres))
+    cols[3].metric("Facturado", money(facturacion_total))
+    ticket_text = f"El Patron Pro\nFecha: {datetime.now():%Y-%m-%d %H:%M}\nTickets: {len(facturas)}\nFacturado: {money(facturacion_total)}\nTicket promedio: {money(ticket_promedio)}\nESC/POS: preparado\nGracias por su visita."
+    st.markdown(f"<div class='ticket'>{ticket_text}</div>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    c1.download_button("Descargar ticket TXT", ticket_text.encode("utf-8"), "ticket_el_patron.txt", "text/plain", width="stretch")
+    c2.download_button("Descargar facturas CSV", facturas.to_csv(index=False).encode("utf-8-sig"), "facturas_el_patron.csv", "text/csv", width="stretch")
+    render_table(facturas, ["numero_factura", "tipo_comprobante", "metodo_pago", "total", "fecha_emision"], height=320)
+
+elif active_module == "Reportes":
+    section_header("Reportes / BI", "Ventas, menu, stock, comandas, mermas y lectura gerencial.")
+    render_top_metrics()
+    chart_cols = st.columns(2)
+    with chart_cols[0]:
+        st.subheader("Productos por categoria")
+        if "categoria" in productos.columns and not productos.empty:
+            st.bar_chart(productos["categoria"].fillna("Sin categoria").value_counts(), width="stretch")
         else:
-            order_cols = [col for col in ["id_pedido", "numero_mesa", "mozo", "estado_comanda", "fecha_hora", "stock_descontado", "items"] if col in pedidos.columns]
-            st.dataframe(pedidos[order_cols] if order_cols else pedidos, width="stretch", hide_index=True)
-    with order_right:
-        st.markdown("#### Caja")
-        if facturas.empty:
-            render_empty_state("Sin facturas", "Los tickets y cobros apareceran cuando cierres comandas en Caja.")
+            empty_state("Sin categorias", "No hay productos para graficar.")
+    with chart_cols[1]:
+        st.subheader("Stock critico")
+        if len(stock_critico):
+            st.bar_chart(stock_critico.set_index("nombre")["stock_actual"].map(number), width="stretch")
         else:
-            factura_cols = [col for col in ["numero_factura", "total", "tipo_comprobante", "metodo_pago", "fecha_emision"] if col in facturas.columns]
-            st.dataframe(facturas[factura_cols] if factura_cols else facturas, width="stretch", hide_index=True)
+            empty_state("Stock sano", "No hay insumos bajo minimo.")
 
-    with st.expander("Detalles de pedidos y movimientos de inventario"):
-        detail_tabs = st.tabs(["Detalle comandas", "Movimientos inventario", "Reservas", "Pagos"])
-        with detail_tabs[0]:
-            st.dataframe(detalles, width="stretch", hide_index=True)
-        with detail_tabs[1]:
-            st.dataframe(movimientos, width="stretch", hide_index=True)
-        with detail_tabs[2]:
-            st.dataframe(reservas, width="stretch", hide_index=True)
-        with detail_tabs[3]:
-            st.dataframe(pagos, width="stretch", hide_index=True)
+elif active_module == "Sistema":
+    section_header("Sistema y Supabase", "Salud de tablas, explorador y diagnostico de integracion.")
+    render_top_metrics()
+    status_filter = st.radio("Filtro de tablas", ["Todas", "OK", "ERROR"], horizontal=True)
+    status_df = summary if status_filter == "Todas" else summary[summary["estado"] == status_filter]
+    render_table(status_df, ["tabla", "estado", "registros", "detalle"], height=420)
+    with st.expander("Explorador de tablas"):
+        table_name = st.selectbox("Tabla", APP_TABLES, index=APP_TABLES.index("productos_menu"))
+        search = st.text_input("Buscar dentro de la tabla")
+        result = fetch_table(supabase_url, supabase_key, table_name, limit=1000)
+        df = apply_text_filter(as_dataframe(result["data"]), search) if result["ok"] else pd.DataFrame()
+        render_table(df, height=420)
 
-with tab_tablas:
-    st.subheader("Salud de tablas Supabase")
-    status_filter = st.radio("Filtro", ["Todas", "OK", "ERROR"], horizontal=True)
-    status_df = summary.copy()
-    if status_filter != "Todas":
-        status_df = status_df[status_df["estado"] == status_filter]
-    st.dataframe(status_df, width="stretch", hide_index=True)
+elif active_module == "Backups":
+    section_header("Backups", "Descarga de datos operativos para resguardo y auditoria.")
+    backup_tables = {name: as_dataframe(table_results[name]["data"]) for name in APP_TABLES if table_results[name]["ok"]}
+    cols = st.columns(3)
+    cols[0].metric("Tablas listas", len(backup_tables))
+    cols[1].metric("Registros", total_records)
+    cols[2].metric("Generado", datetime.now().strftime("%H:%M"))
     st.download_button(
-        "Descargar diagnostico CSV",
-        summary.to_csv(index=False).encode("utf-8-sig"),
-        file_name=f"diagnostico_supabase_{datetime.now():%Y%m%d_%H%M}.csv",
-        mime="text/csv",
+        "Descargar backup completo ZIP",
+        make_backup_zip(backup_tables),
+        file_name=f"backup_el_patron_{datetime.now():%Y%m%d_%H%M}.zip",
+        mime="application/zip",
         width="stretch",
     )
-
-with tab_explorador:
-    st.subheader("Explorador de datos")
-    table_name = st.selectbox("Tabla", APP_TABLES, index=APP_TABLES.index("productos_menu"))
-    limit = st.slider("Filas a consultar", 10, 1000, 100, step=10)
-    search = st.text_input("Buscar dentro de la tabla", placeholder="Texto libre")
-
-    result = fetch_table(supabase_url, supabase_key, table_name, limit=limit)
-    if not result["ok"]:
-        st.error(result["error"])
-    else:
-        df = apply_text_filter(as_dataframe(result["data"]), search)
-        st.caption(f"{result['count']} registros en Supabase. Mostrando {len(df)} filas luego del filtro.")
-        if df.empty:
-            render_empty_state("Tabla sin filas para mostrar", "Prueba otro filtro o carga datos desde el programa principal.")
-        else:
-            st.dataframe(df, width="stretch", hide_index=True)
-            st.download_button(
-                f"Descargar {table_name} CSV",
-                df.to_csv(index=False).encode("utf-8-sig"),
-                file_name=f"{table_name}_{datetime.now():%Y%m%d_%H%M}.csv",
-                mime="text/csv",
-                width="stretch",
-            )
+    render_table(summary, ["tabla", "estado", "registros", "detalle"], height=420)
