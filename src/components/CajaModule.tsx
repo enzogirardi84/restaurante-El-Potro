@@ -40,7 +40,7 @@ import { cajaService } from '../services/cajaService';
 import { pagosService } from '../services/pagosService';
 import { pdfService } from '../services/pdfService';
 import { printerService } from '../services/printerService';
-import { facturacionService } from '../services/facturacionService';
+import { facturacionService, Factura } from '../services/facturacionService';
 import { auditoriaService } from '../services/auditoriaService';
 
 interface CajaModuleProps {
@@ -77,6 +77,7 @@ export default function CajaModule({
   // Active cashier session states
   const [cajaSession, setCajaSession] = useState<CierreCaja | null>(null);
   const [sessionInsumos, setSessionInsumos] = useState<CierreCaja[]>([]);
+  const [lastFacturas, setLastFacturas] = useState<Factura[]>([]);
 
   // Shift opening/closing dialog states
   const [showOpenModal, setShowOpenModal] = useState(false);
@@ -126,6 +127,8 @@ export default function CajaModule({
     try {
       const history = await cajaService.list();
       setSessionInsumos(history);
+      const facturas = await facturacionService.list();
+      setLastFacturas(facturas.slice(0, 6));
     } catch (err) {
       console.error(err);
     }
@@ -469,7 +472,7 @@ export default function CajaModule({
     addLog('sistema', `CAJA: Cobro finalizado correctamente para Mesa ${selectedPedido.numero_mesa}. Transacción Fiscal ${compiledTicketNo} registrada. `);
 
     // Trigger auto printing of PDF & physical printer if configured
-    pdfService.exportToPDF(dataTicket);
+    await pdfService.exportToPDF(dataTicket);
     await printerService.sendToPrinter(dataTicket, printerConfig);
 
     // Reset checkout states
@@ -540,7 +543,7 @@ export default function CajaModule({
     }
   };
 
-  const triggerPDFDownloadOnly = () => {
+  const triggerPDFDownloadOnly = async () => {
     if (!selectedPedido || !cajaSession) return;
 
     const dataTicket: TicketData = {
@@ -577,7 +580,32 @@ export default function CajaModule({
       mensajePie: restaurante.mensajePie
     };
 
-    pdfService.exportToPDF(dataTicket);
+    await pdfService.exportToPDF(dataTicket);
+  };
+
+  const downloadFacturaHistorialPdf = async (factura: Factura) => {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF('p', 'mm', [80, 160]);
+    let y = 10;
+    const line = (text: string, size = 8, bold = false) => {
+      doc.setFont('courier', bold ? 'bold' : 'normal');
+      doc.setFontSize(size);
+      doc.text(text, 5, y);
+      y += size * 0.55 + 1.5;
+    };
+    line('EL PATRON RESTAURANTE', 10, true);
+    line('Ticket emitido desde caja', 8);
+    line('------------------------------', 8);
+    line(`Nro: ${factura.nro_ticket}`, 8, true);
+    line(`Cliente: ${factura.cliente}`, 7);
+    line(`CUIT: ${factura.cuit || '-'}`, 7);
+    line(`Medio: ${factura.medio_pago.toUpperCase()}`, 7);
+    line(`Fecha: ${factura.fecha}`, 7);
+    line('------------------------------', 8);
+    line(`Neto: $${(factura.total - factura.iva_veintiuno).toLocaleString('es-AR')}`, 8);
+    line(`IVA: $${factura.iva_veintiuno.toLocaleString('es-AR')}`, 8);
+    line(`TOTAL: $${factura.total.toLocaleString('es-AR')}`, 10, true);
+    doc.save(`ticket_${factura.nro_ticket}.pdf`);
   };
 
   // Group items by menu categories (Rule 3)
@@ -852,6 +880,11 @@ export default function CajaModule({
                     <span>Arqueo Teórico:</span>
                     <span>${(cajaSession.monto_apertura + cajaSession.monto_ventas).toLocaleString('es-AR')}</span>
                   </div>
+
+                  <div className="flex justify-between text-xs font-black text-emerald-700 pt-1 font-mono border-t border-emerald-100">
+                    <span>Caja esperada:</span>
+                    <span>${(cajaSession.monto_apertura + cajaSession.monto_ventas).toLocaleString('es-AR')}</span>
+                  </div>
                 </div>
 
                 {/* Turn revenue detailed tags */}
@@ -923,6 +956,30 @@ export default function CajaModule({
                   <CheckCircle className="w-7 h-7 text-emerald-500 mx-auto mb-2" />
                   <p className="text-[11px] text-stone-500 font-black uppercase">¡Todo liquidado!</p>
                   <p className="text-[9px] text-stone-400 mt-0.5">No hay comandos de mesas pendientes de liquidación.</p>
+                  <div className="mt-5 text-left bg-white rounded-xl border border-stone-200 p-3 space-y-2">
+                    <p className="text-[10px] font-black uppercase text-stone-600 flex items-center gap-1.5">
+                      <Receipt className="w-3.5 h-3.5 text-[#624A3E]" />
+                      Tickets emitidos
+                    </p>
+                    {lastFacturas.length > 0 ? (
+                      lastFacturas.map(factura => (
+                        <div key={factura.id_factura} className="flex items-center justify-between gap-2 border-t border-stone-100 pt-2">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-mono font-black text-stone-800 truncate">{factura.nro_ticket}</p>
+                            <p className="text-[9px] text-stone-400 truncate">{factura.cliente} - ${factura.total.toLocaleString('es-AR')}</p>
+                          </div>
+                          <button
+                            onClick={() => downloadFacturaHistorialPdf(factura)}
+                            className="px-2 py-1 rounded-lg bg-[#624A3E] text-white text-[9px] font-black uppercase shrink-0"
+                          >
+                            Descargar PDF
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-[9px] text-stone-400">Aun no hay tickets emitidos en el historial.</p>
+                    )}
+                  </div>
                 </div>
               ) : (
                 activeBills.map(b => {

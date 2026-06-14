@@ -1326,6 +1326,7 @@ export default function App() {
             <div className="animate-fadeIn">
               <FacturacionModule
                 pedidos={pedidos}
+                productosMenu={productosMenu}
                 addLog={addLog}
               />
             </div>
