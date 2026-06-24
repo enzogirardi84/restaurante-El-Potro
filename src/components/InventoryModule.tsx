@@ -50,7 +50,7 @@ export default function InventoryModule({
   const [inventorySearch, setInventorySearch] = useState('');
 
   // Selected dish for escandallo simulator
-  const [selectedEscandalloDishId, setSelectedEscandalloDishId] = useState<string>('prod_bife');
+  const [selectedEscandalloDishId, setSelectedEscandalloDishId] = useState<string>('prod_pes_salmon');
   const [simulatePortions, setSimulatePortions] = useState<number>(1);
 
   // Waste (Merma) form states
@@ -212,11 +212,14 @@ export default function InventoryModule({
 
   // Recipe specs for the selected dish
   const selectedProduct = useMemo(() => {
-    return productosMenu.find(p => p.id_producto === selectedEscandalloDishId) || null;
-  }, [selectedEscandalloDishId, productosMenu]);
+    return productosMenu.find(p => p.id_producto === selectedEscandalloDishId) || 
+           productosMenu.find(p => recetas.some(r => r.id_producto === p.id_producto)) || 
+           productosMenu[0] || null;
+  }, [selectedEscandalloDishId, productosMenu, recetas]);
 
   const selectedProductIngredients = useMemo(() => {
-    return recetas.filter(r => r.id_producto === selectedEscandalloDishId).map(recipe => {
+    const activeId = selectedProduct?.id_producto || selectedEscandalloDishId;
+    return recetas.filter(r => r.id_producto === activeId).map(recipe => {
       const ins = insumos.find(i => i.id_insumo === recipe.id_insumo);
       return {
         ...recipe,
@@ -226,7 +229,7 @@ export default function InventoryModule({
         stock_minimo: ins ? ins.stock_minimo : 0,
       };
     });
-  }, [selectedEscandalloDishId, recetas, insumos]);
+  }, [selectedProduct, selectedEscandalloDishId, recetas, insumos]);
 
   // Calculate maximum portion yield based on current inventory
   const maxYieldPortions = useMemo(() => {

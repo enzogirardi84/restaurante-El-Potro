@@ -178,21 +178,21 @@ export default function CajaModule({
     }
 
     // AUTOMATIC PROMOS CALCULATION:
-    // Combo 1: Ojo de bife ("prod_car_ojo_bife" or "prod_bife") + Vino -> Deducts 15% from vino item sum
-    // Combo 2: Hamburguesa ("prod_cri_hamburguesa" or "prod_hamburguesa") + Gaseosa -> Deducts $1,500 ARS combo discount
+    // Combo 1: Lomo / Bondiola ("prod_car_lomo_pimienta" or "prod_car_bondiola_ahumada") + Vino -> Deducts 15% from vino item sum
+    // Combo 2: Milanesa / Lentejas ("prod_car_mila_entrecot" or "prod_cri_lentejas") + Gaseosa -> Deducts $1,500 ARS combo discount
     let promoDeduction = 0;
     
-    const hasOjoBife = selectedPedido.items.some(it => it.id_producto === 'prod_car_ojo_bife' || it.id_producto === 'prod_bife');
-    const hasVino = selectedPedido.items.some(it => it.id_producto === 'prod_vino_malbec' || it.id_producto === 'prod_vino_rutini_botella');
-    const hasBurger = selectedPedido.items.some(it => it.id_producto === 'prod_cri_hamburguesa' || it.id_producto === 'prod_hamburguesa');
+    const hasOjoBife = selectedPedido.items.some(it => it.id_producto === 'prod_car_lomo_pimienta' || it.id_producto === 'prod_car_bondiola_ahumada');
+    const hasVino = selectedPedido.items.some(it => it.id_producto === 'prod_vin_trumpeter_botella' || it.id_producto === 'prod_vin_rutini_botella');
+    const hasBurger = selectedPedido.items.some(it => it.id_producto === 'prod_car_mila_entrecot' || it.id_producto === 'prod_cri_lentejas');
     const hasGaseosa = selectedPedido.items.some(it => it.id_insumo === 'ins_beb_gaseosa' || it.nombre.toLowerCase().includes('gaseosa') || it.id_producto === 'prod_gaseosa');
 
     // Promos apply only if we are paying the whole ticket or paying those items
-    const qualifiesForBifeVino = hasOjoBife && hasVino && (!splitByProducts || (selectedProductsForSplit.includes('prod_car_ojo_bife') && (selectedProductsForSplit.includes('prod_vino_malbec') || selectedProductsForSplit.includes('prod_vino_rutini_botella'))));
-    const qualifiesForBurgerGaseosa = hasBurger && hasGaseosa && (!splitByProducts || (selectedProductsForSplit.includes('prod_cri_hamburguesa') && (selectedProductsForSplit.includes('ins_beb_gaseosa') || selectedProductsForSplit.includes('prod_gaseosa'))));
+    const qualifiesForBifeVino = hasOjoBife && hasVino && (!splitByProducts || (selectedProductsForSplit.some(id => id === 'prod_car_lomo_pimienta' || id === 'prod_car_bondiola_ahumada') && (selectedProductsForSplit.includes('prod_vin_trumpeter_botella') || selectedProductsForSplit.includes('prod_vin_rutini_botella'))));
+    const qualifiesForBurgerGaseosa = hasBurger && hasGaseosa && (!splitByProducts || (selectedProductsForSplit.some(id => id === 'prod_car_mila_entrecot' || id === 'prod_cri_lentejas') && (selectedProductsForSplit.includes('ins_beb_gaseosa') || selectedProductsForSplit.includes('prod_gaseosa'))));
 
     if (qualifiesForBifeVino) {
-      const vinoItem = selectedPedido.items.find(it => it.id_producto === 'prod_vino_malbec' || it.id_producto === 'prod_vino_rutini_botella');
+      const vinoItem = selectedPedido.items.find(it => it.id_producto === 'prod_vin_trumpeter_botella' || it.id_producto === 'prod_vin_rutini_botella');
       const prodVino = productosMenu.find(pr => pr.id_producto === vinoItem?.id_producto);
       if (prodVino && vinoItem) {
         promoDeduction += (prodVino.precio_venta * 0.15) * vinoItem.cantidad;
@@ -1148,13 +1148,13 @@ export default function CajaModule({
                 </div>
 
                 {/* Automated Promotions Detector flag box */}
-                {((selectedPedido.items.some(it => it.id_producto === 'prod_car_ojo_bife' || it.id_producto === 'prod_bife') && selectedPedido.items.some(it => it.id_producto === 'prod_vino_malbec' || it.id_producto === 'prod_vino_rutini_botella')) || 
-                 (selectedPedido.items.some(it => it.id_producto === 'prod_cri_hamburguesa' || it.id_producto === 'prod_hamburguesa') && selectedPedido.items.some(it => it.id_insumo === 'ins_beb_gaseosa' || it.id_producto === 'prod_gaseosa'))) && (
+                {((selectedPedido.items.some(it => it.id_producto === 'prod_car_lomo_pimienta' || it.id_producto === 'prod_car_bondiola_ahumada') && selectedPedido.items.some(it => it.id_producto === 'prod_vin_trumpeter_botella' || it.id_producto === 'prod_vin_rutini_botella')) || 
+                 (selectedPedido.items.some(it => it.id_producto === 'prod_car_mila_entrecot' || it.id_producto === 'prod_cri_lentejas') && selectedPedido.items.some(it => it.id_insumo === 'ins_beb_gaseosa' || it.id_producto === 'prod_gaseosa'))) && (
                   <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-lg flex items-start gap-2 text-emerald-800">
                     <Percent className="w-4 h-4 text-emerald-700 mt-0.5 shrink-0" />
                     <div className="text-[10px] font-sans">
                       <p className="font-bold uppercase tracking-wide">Promoción automática calificada</p>
-                      <p className="text-stone-500 font-normal mt-0.5 leading-snug">Se han deducido $1.500 (Combo burger + lata) y/o el 15% del vino (Combo Ojo de bife + Vino) por compras cruzadas.</p>
+                      <p className="text-stone-500 font-normal mt-0.5 leading-snug">Se han deducido $1.500 (Combo Milanesa/Lentejas + lata) y/o el 15% del vino (Combo Lomo/Bondiola + Vino) por compras cruzadas.</p>
                     </div>
                   </div>
                 )}

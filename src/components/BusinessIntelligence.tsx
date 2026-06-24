@@ -30,23 +30,21 @@ export default function BusinessIntelligence({ productosMenu, logs }: BusinessIn
   // Stars (High sales, high profit), Cash Cows (High sales, low profit), Question Marks (Low sales, high profit), Dogs (Low sales, low profit)
   const bcgData = useMemo(() => {
     return [
-      { id: 'prod_bife', nombre: 'Bife de Chorizo', x: 80, y: 85, tipo: 'Estrella 🌟', desc: 'Plato insignia, alta demanda y excelente rentabilidad.', color: 'bg-yellow-500' },
-      { id: 'prod_entrana', nombre: 'Entraña Arriera', x: 45, y: 90, tipo: 'Incógnita ❓', desc: 'Alto margen pero volumen de ventas moderado. Requiere promoción.', color: 'bg-purple-500' },
-      { id: 'prod_vino_rutini_botella', nombre: 'Vino Rutini Cabernet', x: 25, y: 80, tipo: 'Incógnita ❓', desc: 'Margen excelente, venta ocasional premium.', color: 'bg-purple-500' },
-      { id: 'prod_hamburguesa', nombre: 'Hamburguesa Completa', x: 85, y: 45, tipo: 'Vaca Sagrada 🐄', desc: 'Volumen inmenso, genera flujo constante aunque margen ajustado.', color: 'bg-emerald-500' },
-      { id: 'prod_pasta', nombre: 'Pastas Caseras', x: 75, y: 55, tipo: 'Vaca Sagrada 🐄', desc: 'Muy popular. Costo moderado, rotación sumamente saludable.', color: 'bg-emerald-500' },
-      { id: 'prod_ensalada_cesar', nombre: 'Ensalada César', x: 60, y: 40, tipo: 'Vaca Sagrada 🐄', desc: 'Entrada recurrente de costo operativo bajo.', color: 'bg-emerald-500' },
-      { id: 'prod_tarta', nombre: 'Tarta Rústica', x: 30, y: 25, tipo: 'Perro 🐕', desc: 'Rotación magra y rentabilidad baja. Evaluar recambio de carta.', color: 'bg-slate-450' },
+      { id: 'prod_car_lomo_pimienta', nombre: 'Lomo en demiglace de pimienta', x: 80, y: 85, tipo: 'Estrella 🌟', desc: 'Plato insignia, alta demanda y excelente rentabilidad.', color: 'bg-yellow-500' },
+      { id: 'prod_vin_rutini_botella', nombre: 'Rutini Cab-Malbec 750ml', x: 25, y: 80, tipo: 'Incógnita ❓', desc: 'Margen excelente, venta ocasional premium.', color: 'bg-purple-500' },
+      { id: 'prod_car_mila_entrecot', nombre: 'Milanesa de entrecot con fideos', x: 85, y: 45, tipo: 'Vaca Sagrada 🐄', desc: 'Volumen inmenso, genera flujo constante aunque margen ajustado.', color: 'bg-emerald-500' },
+      { id: 'prod_pas_lasagna_pollo', nombre: 'Lasagna de pollo y espinaca al forno', x: 75, y: 55, tipo: 'Vaca Sagrada 🐄', desc: 'Muy popular. Costo moderado, rotación sumamente saludable.', color: 'bg-emerald-500' },
+      { id: 'prod_ent_peras_quesoazul', nombre: 'Pera asada con queso azul', x: 60, y: 40, tipo: 'Vaca Sagrada 🐄', desc: 'Entrada recurrente de costo operativo bajo.', color: 'bg-emerald-500' },
+      { id: 'prod_pos_tarta_vasca', nombre: 'Tarta de queso vasca', x: 30, y: 25, tipo: 'Perro 🐕', desc: 'Rotación magra y rentabilidad baja. Evaluar recambio de carta.', color: 'bg-slate-400' },
     ];
   }, []);
 
   // Static performance delay metrics for high fidelity display
   const waitTimesData = [
-    { plato: 'Bife de Chorizo', minutos: 15.4, ideal: 14.0, color: 'fill-emerald-450' },
-    { plato: 'Pastas Caseras', minutos: 9.8, ideal: 11.0, color: 'fill-emerald-450' },
-    { plato: 'Entraña Arriera', minutos: 17.1, ideal: 15.0, color: 'fill-amber-450' },
-    { plato: 'Hamburguesa Gourmet', minutos: 11.2, ideal: 10.0, color: 'fill-emerald-450' },
-    { plato: 'Tarta Rústica', minutos: 8.5, ideal: 9.0, color: 'fill-emerald-450' },
+    { plato: 'Lomo en demiglace de pimienta', minutos: 15.4, ideal: 14.0, color: 'fill-emerald-500' },
+    { plato: 'Lasagna de pollo al forno', minutos: 9.8, ideal: 11.0, color: 'fill-emerald-500' },
+    { plato: 'Milanesa de entrecot', minutos: 11.2, ideal: 10.0, color: 'fill-emerald-500' },
+    { plato: 'Tarta de queso vasca', minutos: 8.5, ideal: 9.0, color: 'fill-emerald-500' },
   ];
 
   // Filter logs safely
