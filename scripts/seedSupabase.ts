@@ -89,16 +89,21 @@ const supabase = createClient(normalizeSupabaseUrl(rawUrl), anonKey, {
   }
 });
 
-const productos = INITIAL_PRODUCTOS_MENU.map(producto => ({
-  ...producto,
-  imagen: producto.imagen || null
-}));
+const productos = INITIAL_PRODUCTOS_MENU.map(producto => {
+  const { subcategoria, ...rest } = producto;
+  return {
+    ...rest,
+    imagen: producto.imagen || null
+  };
+});
 
-const recetas = INITIAL_RECETAS_ESCANDALLO.map(receta => ({
-  ...receta,
-  unidad_medida: receta.unidad_medida || null,
-  merma_estimada_porcentaje: receta.merma_estimada_porcentaje ?? 0
-}));
+const recetas = INITIAL_RECETAS_ESCANDALLO.map(receta => {
+  const { merma_estimada_porcentaje, ...rest } = receta;
+  return {
+    ...rest,
+    unidad_medida: receta.unidad_medida || null
+  };
+});
 
 console.log('Iniciando carga de datos base en Supabase...');
 
