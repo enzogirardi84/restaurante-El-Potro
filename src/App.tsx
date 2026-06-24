@@ -58,7 +58,6 @@ import PanelDashboard from './components/PanelDashboard';
 import UsuariosModule from './components/UsuariosModule';
 import MenuModule from './components/MenuModule';
 import RecetasModule from './components/RecetasModule';
-import MesasModule from './components/MesasModule';
 import ProveedoresModule from './components/ProveedoresModule';
 import PromocionesModule from './components/PromocionesModule';
 import ReservasModule from './components/ReservasModule';
@@ -89,7 +88,6 @@ type ActiveView =
   | 'usuarios'
   | 'menu'
   | 'recetas'
-  | 'mesas'
   | 'inventario'
   | 'proveedores'
   | 'promociones'
@@ -230,15 +228,6 @@ const NAV_ITEMS: NavItem[] = [
     group: 'Administración',
     icon: ClipboardList,
     tone: 'amber',
-  },
-  {
-    id: 'mesas',
-    label: 'Mesas',
-    shortLabel: 'Mesas',
-    description: 'Distribución del salón, ocupación y capacidad.',
-    group: 'Administración',
-    icon: UtensilsCrossed,
-    tone: 'blue',
   },
   {
     id: 'inventario',
@@ -895,7 +884,6 @@ export default function App() {
     .reduce((acc, p) => acc + p.items.reduce((sum, item) => sum + (item.cantidad * 12500), 0), 0);
 
   const getNavBadge = (id: ActiveView): string | null => {
-    if (id === 'mesas') return `${occupiedTablesCount}/${mesas.length}`;
     if (id === 'mozo') return activeOrdersCount > 0 ? `${activeOrdersCount}` : null;
     if (id === 'cocina') return activeOrdersCount > 0 ? `${activeOrdersCount}` : null;
     if (id === 'caja') return readyToCollectCount > 0 ? `${readyToCollectCount}` : null;
@@ -1266,16 +1254,6 @@ export default function App() {
                 recetas={recetas}
                 productosMenu={productosMenu}
                 insumos={insumos}
-                addLog={addLog}
-              />
-            </div>
-          )}
-
-          {activeView === 'mesas' && (
-            <div className="animate-fadeIn">
-              <MesasModule
-                mesas={mesas}
-                onMesasChange={setMesas}
                 addLog={addLog}
               />
             </div>
