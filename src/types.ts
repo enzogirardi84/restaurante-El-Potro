@@ -8,8 +8,21 @@ export interface Usuario {
 export interface Mesa {
   id_mesa: number;
   numero_mesa: string;
-  estado: 'libre' | 'ocupada' | 'esperando_cuenta';
+  estado: 'libre' | 'ocupada' | 'esperando_cuenta' | 'reservada' | 'limpiando' | 'unida' | 'sucia';
   comensales?: number;
+  reserva_cliente?: string;
+  reserva_hora?: string;
+  capacidad?: number;
+  zona?: 'comedor' | 'salon';
+  sector?: 'patio' | 'comedor' | 'salon' | 'terraza' | 'vip';
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  rx?: number;
+  forma?: 'redonda' | 'rectangular';
+  mesas_unidas?: number[];
+  parent_id?: number | null;
 }
 
 export interface Insumo {
@@ -185,3 +198,32 @@ export interface TicketData {
   tipoComprobante: TipoComprobante;
   mensajePie: string;
 }
+
+export interface Reserva {
+  id_reserva: string;
+  nombre_cliente: string;
+  telefono: string;
+  hora: string;
+  pax: number;
+  nombre_mesa: string;
+  estado: 'confirmada' | 'sentada' | 'cancelada' | 'pendiente' | 'completada';
+  id_mesa?: number | null;
+  fecha?: string;
+  comensales?: number;
+  observaciones?: string;
+  email?: string;
+  lista_espera?: boolean;
+  fecha_espera?: string | Date;
+  entrada_lista_espera?: string;
+  prioridad_espera?: number;
+}
+
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface ToastMessage {
+  id: string;
+  type: ToastType;
+  message: string;
+  duration?: number;
+}
+

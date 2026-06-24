@@ -1275,7 +1275,7 @@ export default function App() {
             <div className="animate-fadeIn">
               <MesasModule
                 mesas={mesas}
-                onSubmitPedido={handleCrearPedido}
+                onMesasChange={setMesas}
                 addLog={addLog}
               />
             </div>
