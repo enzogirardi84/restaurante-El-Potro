@@ -16,7 +16,7 @@ const money = (value: number) => `$${Number(value || 0).toLocaleString('es-AR', 
   maximumFractionDigits: 2
 })}`;
 
-const itemUnit = (item: TicketItem) => item.precio_unitario ?? item.precioUnitario ?? 0;
+const itemUnit = (item: TicketItem) => item.precio_unitario ?? 0;
 
 const loadLogoDataUrl = async () => {
   if (logoDataUrlCache !== undefined) return logoDataUrlCache;
