@@ -891,7 +891,7 @@ export default function App() {
     <div className="min-h-screen lg:h-screen bg-[#F4EFE6] flex flex-col lg:flex-row font-sans text-slate-800 antialiased selection:bg-[#624A3E] selection:text-white overflow-hidden">
 
       {/* LEFT SIDE PANEL (PERSISTENT SIDEBAR) */}
-      <aside className={`w-full max-h-screen overflow-y-auto lg:overflow-y-visible lg:max-h-none ${isSidebarCollapsed ? 'lg:w-[92px]' : 'lg:w-[316px]'} lg:h-screen bg-[#171614] text-[#E9E0D4] flex flex-col border-b lg:border-b-0 lg:border-r border-stone-800 shrink-0 z-40 shadow-2xl shadow-black/20 transition-all duration-300 ease-out`} id="sidebar-left-panel">
+      <aside className={`w-full max-h-screen overflow-y-auto lg:overflow-hidden ${isSidebarCollapsed ? 'lg:w-[92px]' : 'lg:w-[316px]'} lg:h-screen bg-[#171614] text-[#E9E0D4] flex flex-col border-b lg:border-b-0 lg:border-r border-stone-800 shrink-0 z-40 shadow-2xl shadow-black/20 transition-all duration-300 ease-out`} id="sidebar-left-panel">
 
         {/* Brand Header */}
         <div className="p-4 border-b border-stone-800 bg-[#12110F]">
