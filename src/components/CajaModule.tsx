@@ -42,6 +42,8 @@ import { pdfService } from '../services/pdfService';
 import { printerService } from '../services/printerService';
 import { facturacionService, Factura } from '../services/facturacionService';
 import { auditoriaService } from '../services/auditoriaService';
+import { ManualBillingPanel } from './ManualBillingPanel';
+import { useToast, ToastContainer } from './ToastContainer';
 
 interface CajaModuleProps {
   pedidos: Pedido[];
@@ -89,6 +91,8 @@ export default function CajaModule({
 
   // Interactive cashier selection
   const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
+  const [showManualBilling, setShowManualBilling] = useState<boolean>(false);
+  const { toasts, toast, dismissToast } = useToast();
   
   // Checkout options
   const [tipoComprobante, setTipoComprobante] = useState<TipoComprobante>('factura_b');
@@ -137,6 +141,12 @@ export default function CajaModule({
   useEffect(() => {
     loadCajaState();
   }, []);
+
+  useEffect(() => {
+    if (selectedPedidoId !== null) {
+      setShowManualBilling(false);
+    }
+  }, [selectedPedidoId]);
 
   // Filter commands by active state waiting checkout
   const activeBills = useMemo(() => {
@@ -646,6 +656,25 @@ export default function CajaModule({
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={() => {
+              if (!cajaSession) {
+                alert('Tenga a bien abrir primero la caja para proceder.');
+                return;
+              }
+              setSelectedPedidoId(null);
+              setShowManualBilling(!showManualBilling);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] uppercase font-extrabold cursor-pointer transition-all ${
+              showManualBilling 
+                ? 'bg-[#624A3E] text-white border-[#624A3E] hover:bg-[#503C32]' 
+                : 'border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Factura Manual
+          </button>
+
+          <button
             onClick={() => setEditRestauranteMode(!editRestauranteMode)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-stone-50 text-[10px] uppercase font-extrabold text-stone-600 hover:bg-stone-100 cursor-pointer transition-colors"
           >
@@ -1059,7 +1088,19 @@ export default function CajaModule({
         {/* RIGHT COLUMN: CORE TERMINAL & RECEIPT PREVIEW (LG: Span 8) */}
         <div className="lg:col-span-8">
           
-          {selectedPedido ? (
+          {showManualBilling ? (
+            <ManualBillingPanel
+              cajaSession={cajaSession}
+              restaurante={restaurante}
+              onEmitSuccess={() => {
+                setShowManualBilling(false);
+                loadCajaState();
+              }}
+              onClose={() => setShowManualBilling(false)}
+              addLog={addLog}
+              toast={toast}
+            />
+          ) : selectedPedido ? (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-white rounded-2xl p-6 border border-stone-200 shadow-xs">
               
               {/* TICKET OPTIONS CONTROLS (MD: Span 7) */}
@@ -1632,7 +1673,7 @@ export default function CajaModule({
                 Seleccione una mesa ocupada desde la lista lateral. Se iniciará el panel interactivo de check-out, permitiéndole coordinar pagos mixtos, aplicar deducciones manuales, configurar datos de CUIT, fraccionar saldos por comensales u artículos indivisos, y emitir comprobantes en PDF y thermal roll.
               </p>
               
-              {!cajaSession && (
+              {!cajaSession ? (
                 <div className="mt-6 p-4 bg-amber-50 border border-amber-250 rounded-xl text-[11px] text-amber-800 max-w-sm flex items-start gap-2.5">
                   <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                   <div className="text-left">
@@ -1640,6 +1681,17 @@ export default function CajaModule({
                     <p className="mt-0.5 text-stone-600 font-medium leading-relaxed">Tenga a bien iniciar el turno con el botón <strong>"Abrir Caja Diaria"</strong> izquierdo antes de realizar operaciones de facturación.</p>
                   </div>
                 </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSelectedPedidoId(null);
+                    setShowManualBilling(true);
+                  }}
+                  className="mt-6 px-4 py-2 bg-[#624A3E] hover:bg-[#503C32] text-white rounded-xl text-xs font-black uppercase transition-all shadow cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <FileText className="w-4 h-4 text-amber-350" />
+                  Emitir Factura Libre Manual
+                </button>
               )}
             </div>
           )}
@@ -1836,6 +1888,7 @@ export default function CajaModule({
         )}
       </div>
 
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

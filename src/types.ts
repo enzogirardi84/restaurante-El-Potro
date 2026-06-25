@@ -119,7 +119,7 @@ export interface EventoLog {
 
 export type MedioPago = 'efectivo' | 'debito' | 'tarjeta' | 'transferencia' | 'mp_qr' | 'mixto';
 
-export type TipoComprobante = 'ticket_interno' | 'factura_b' | 'factura_a' | 'nota_credito';
+export type TipoComprobante = 'ticket_interno' | 'factura_b' | 'factura_a' | 'nota_credito' | 'factura_c';
 
 export interface FacturaDb {
   id_factura: string;
@@ -197,6 +197,8 @@ export interface TicketData {
   vuelto: number;
   tipoComprobante: TipoComprobante;
   mensajePie: string;
+  clienteNombre?: string;
+  clienteCuit?: string;
 }
 
 export interface Reserva {

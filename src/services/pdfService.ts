@@ -11,7 +11,7 @@ export const pdfService = {
   },
 
   generateTicketPDF(data: TicketData): jsPDF {
-    const isA4 = data.tipoComprobante === 'factura_a' || data.tipoComprobante === 'factura_b';
+    const isA4 = data.tipoComprobante === 'factura_a' || data.tipoComprobante === 'factura_b' || data.tipoComprobante === 'factura_c';
 
     if (isA4) {
       const doc = new jsPDF('p', 'mm', 'a4');
@@ -36,10 +36,11 @@ export const pdfService = {
       
       doc.setTextColor(98, 74, 62);
       doc.setFontSize(18);
-      const letter = data.tipoComprobante === 'factura_a' ? 'A' : 'B';
+      const letter = data.tipoComprobante === 'factura_a' ? 'A' : data.tipoComprobante === 'factura_c' ? 'C' : 'B';
+      const codComprobante = data.tipoComprobante === 'factura_a' ? 'COD. 001' : data.tipoComprobante === 'factura_c' ? 'COD. 011' : 'COD. 006';
       doc.text(letter, margin + 152, y + 11.5);
       doc.setFontSize(7);
-      doc.text('COD. 061', margin + 148, y + 16.5);
+      doc.text(codComprobante, margin + 148, y + 16.5);
 
       y += 35;
       
@@ -74,10 +75,12 @@ export const pdfService = {
       doc.setTextColor(98, 74, 62);
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(9.5);
-      doc.text(`CLIENTE: Consumidor Final`, margin + 4, y + 8);
+      const name = data.clienteNombre || 'Consumidor Final';
+      doc.text(`CLIENTE: ${name}`, margin + 4, y + 8);
       doc.setTextColor(80, 80, 80);
       doc.setFont('Helvetica', 'normal');
-      doc.text(`CUIT/DNI: ${data.cuit.startsWith('99') ? 'Consumidor Final (DNI/CUIT)' : data.cuit}`, margin + 105, y + 8);
+      const docVal = data.clienteCuit || (data.cuit.startsWith('99') ? 'Consumidor Final (DNI/CUIT)' : data.cuit);
+      doc.text(`CUIT/DNI: ${docVal}`, margin + 105, y + 8);
 
       y += 18;
 
