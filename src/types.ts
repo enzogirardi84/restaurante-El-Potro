@@ -199,6 +199,9 @@ export interface TicketData {
   mensajePie: string;
   clienteNombre?: string;
   clienteCuit?: string;
+  cae?: string;
+  vto?: string;
+  qrData?: string;
 }
 
 export interface Reserva {
