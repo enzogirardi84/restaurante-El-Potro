@@ -49,12 +49,10 @@ import HomeMenuModule from './components/HomeMenuModule';
 import MozoTerminal from './components/MozoTerminal';
 import KitchenMonitor from './components/KitchenMonitor';
 import InventoryModule from './components/InventoryModule';
-import BusinessIntelligence from './components/BusinessIntelligence';
 import CajaModule from './components/CajaModule';
 import SistemaModule from './components/SistemaModule';
 import PythonStreamlitLogin from './components/PythonStreamlitLogin';
 import ElPatronLogo from './components/ElPatronLogo';
-import PanelDashboard from './components/PanelDashboard';
 import UsuariosModule from './components/UsuariosModule';
 import MenuModule from './components/MenuModule';
 import RecetasModule from './components/RecetasModule';
@@ -62,7 +60,6 @@ import MesasModule from './components/MesasModule';
 import ProveedoresModule from './components/ProveedoresModule';
 import PromocionesModule from './components/PromocionesModule';
 import ReservasModule from './components/ReservasModule';
-import FacturacionModule from './components/FacturacionModule';
 import BackupsModule from './components/BackupsModule';
 import RestaurantOpsModule from './components/RestaurantOpsModule';
 import { 
@@ -81,11 +78,9 @@ import {
 
 type ActiveView =
   | 'home'
-  | 'panel'
   | 'mozo'
   | 'cocina'
   | 'caja'
-  | 'reportes'
   | 'usuarios'
   | 'menu'
   | 'recetas'
@@ -94,7 +89,6 @@ type ActiveView =
   | 'proveedores'
   | 'promociones'
   | 'reservas'
-  | 'facturacion'
   | 'turnos'
   | 'compras'
   | 'clientes'
@@ -122,15 +116,6 @@ const NAV_ITEMS: NavItem[] = [
     group: 'Operación',
     icon: Home,
     tone: 'brown',
-  },
-  {
-    id: 'panel',
-    label: 'Panel General',
-    shortLabel: 'Panel',
-    description: 'Métricas macro, alertas críticas y bitácora en vivo.',
-    group: 'Operación',
-    icon: BarChart3,
-    tone: 'blue',
   },
   {
     id: 'mozo',
@@ -161,9 +146,9 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     id: 'turnos',
-    label: 'Turnos',
-    shortLabel: 'Turnos',
-    description: 'Apertura, personal activo y control de servicio.',
+    label: 'Fichaje',
+    shortLabel: 'Fichaje',
+    description: 'Control de asistencia, turnos y personal activo.',
     group: 'Operación',
     icon: Clock,
     tone: 'amber',
@@ -176,15 +161,6 @@ const NAV_ITEMS: NavItem[] = [
     group: 'Operación',
     icon: Truck,
     tone: 'green',
-  },
-  {
-    id: 'reportes',
-    label: 'Reportes / BI',
-    shortLabel: 'Reportes',
-    description: 'Lectura comercial, ventas, stock y desempeño.',
-    group: 'Operación',
-    icon: TrendingUp,
-    tone: 'blue',
   },
   {
     id: 'usuarios',
@@ -275,15 +251,6 @@ const NAV_ITEMS: NavItem[] = [
     group: 'Administración',
     icon: CalendarDays,
     tone: 'amber',
-  },
-  {
-    id: 'facturacion',
-    label: 'Facturación',
-    shortLabel: 'Facturas',
-    description: 'Archivo tributario, tickets y pagos.',
-    group: 'Administración',
-    icon: FileText,
-    tone: 'green',
   },
   {
     id: 'sistema',
@@ -426,6 +393,11 @@ export default function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
 
   const selectView = (view: ActiveView) => {
+    const isMozo = activeMozo === 'Enzo' || activeMozo === 'Micaela';
+    const allowedMozoViews = ['mozo', 'caja', 'reservas', 'turnos', 'delivery', 'menu', 'recetas', 'home'];
+    if (isMozo && !allowedMozoViews.includes(view)) {
+      return;
+    }
     setActiveView(view);
     setIsSidebarCollapsed(true);
   };
@@ -475,6 +447,10 @@ export default function App() {
   const handleMozoChange = (mozo: string) => {
     setActiveMozo(mozo);
     addLog('sistema', `SESIÓN: Acceso de personal actualizado por mozo: ${mozo}`);
+    const isNewMozo = mozo === 'Enzo' || mozo === 'Micaela';
+    if (isNewMozo) {
+      setActiveView('mozo');
+    }
   };
 
   // --- Handlers for Kitchen View (KDS) ---
@@ -915,7 +891,7 @@ export default function App() {
     <div className="min-h-screen lg:h-screen bg-[#F4EFE6] flex flex-col lg:flex-row font-sans text-slate-800 antialiased selection:bg-[#624A3E] selection:text-white overflow-hidden">
 
       {/* LEFT SIDE PANEL (PERSISTENT SIDEBAR) */}
-      <aside className={`w-full max-h-[82vh] lg:max-h-none ${isSidebarCollapsed ? 'lg:w-[92px]' : 'lg:w-[316px]'} lg:h-screen bg-[#171614] text-[#E9E0D4] flex flex-col border-b lg:border-b-0 lg:border-r border-stone-800 shrink-0 z-40 shadow-2xl shadow-black/20 transition-all duration-300 ease-out`} id="sidebar-left-panel">
+      <aside className={`w-full max-h-screen overflow-y-auto lg:overflow-y-visible lg:max-h-none ${isSidebarCollapsed ? 'lg:w-[92px]' : 'lg:w-[316px]'} lg:h-screen bg-[#171614] text-[#E9E0D4] flex flex-col border-b lg:border-b-0 lg:border-r border-stone-800 shrink-0 z-40 shadow-2xl shadow-black/20 transition-all duration-300 ease-out`} id="sidebar-left-panel">
 
         {/* Brand Header */}
         <div className="p-4 border-b border-stone-800 bg-[#12110F]">
@@ -1053,7 +1029,13 @@ export default function App() {
               <span className={`text-[10px] font-black text-stone-500 tracking-wider uppercase px-2 block ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>{group}</span>
 
               <nav className="space-y-1.5" id={`sidebar-navigation-${group.toLowerCase()}`}>
-                {NAV_ITEMS.filter(item => item.group === group).map(item => {
+                {NAV_ITEMS.filter(item => {
+                  if (item.group !== group) return false;
+                  const isMozo = activeMozo === 'Enzo' || activeMozo === 'Micaela';
+                  const allowedMozoViews = ['mozo', 'caja', 'reservas', 'turnos', 'delivery', 'menu', 'recetas', 'home'];
+                  if (isMozo && !allowedMozoViews.includes(item.id)) return false;
+                  return true;
+                }).map(item => {
                   const Icon = item.icon;
                   const isActive = activeView === item.id;
                   const badge = getNavBadge(item.id);
@@ -1178,19 +1160,6 @@ export default function App() {
             </div>
           )}
 
-          {activeView === 'panel' && (
-            <div className="animate-fadeIn">
-              <PanelDashboard
-                mesas={mesas}
-                pedidos={pedidos}
-                insumos={insumos}
-                logs={logs}
-                getSimulatedTimeStr={getSimulatedTimeStr}
-                onNavigate={(view: ActiveView) => selectView(view)}
-              />
-            </div>
-          )}
-
           {activeView === 'mozo' && (
             <div className="animate-fadeIn">
               <MozoTerminal
@@ -1232,14 +1201,7 @@ export default function App() {
             </div>
           )}
 
-          {activeView === 'reportes' && (
-            <div className="animate-fadeIn">
-              <BusinessIntelligence
-                productosMenu={productosMenu}
-                logs={logs}
-              />
-            </div>
-          )}
+
 
           {activeView === 'usuarios' && (
             <div className="animate-fadeIn">
@@ -1322,15 +1284,7 @@ export default function App() {
             </div>
           )}
 
-          {activeView === 'facturacion' && (
-            <div className="animate-fadeIn">
-              <FacturacionModule
-                pedidos={pedidos}
-                productosMenu={productosMenu}
-                addLog={addLog}
-              />
-            </div>
-          )}
+
 
           {(['turnos', 'compras', 'clientes', 'delivery', 'ticketera'] as ActiveView[]).includes(activeView) && (
             <div className="animate-fadeIn">

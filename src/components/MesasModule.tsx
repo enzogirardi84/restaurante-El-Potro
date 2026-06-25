@@ -860,55 +860,15 @@ export default function MesasModule({ mesas, onMesasChange, addLog = () => {} }:
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-black text-stone-800 tracking-tight">Plano de Mesas</h2>
-          <p className="text-xs text-stone-500 font-medium">Haz clic en una mesa para reservar o liberar</p>
+          <h2 className="text-xl font-black text-stone-800 tracking-tight">Gestión de Mesas</h2>
+          <p className="text-xs text-stone-500 font-medium">Administre el estado y la configuración de las mesas del salón</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => { setEditorMode(!editorMode); setUnionMode(false); setSelectedForUnion([]); }}
-            className={`px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
-              editorMode ? 'bg-blue-600 text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-            }`}
-          >
-            {editorMode ? 'Salir del editor' : 'Mover mesas'}
-          </button>
-          <button
-            onClick={() => { setUnionMode(!unionMode); setEditorMode(false); setSelectedForUnion([]); }}
-            className={`px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
-              unionMode ? 'bg-blue-600 text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-            }`}
-          >
-            {unionMode ? 'Cancelar unión' : 'Unir mesas'}
-          </button>
-          {unionMode && selectedForUnion.length === 2 && (
-            <button onClick={handleUnirMesas} className="px-3 py-2 rounded-xl text-xs font-bold bg-[#624A3E] text-white cursor-pointer hover:bg-[#503C32]">
-              Confirmar unión
-            </button>
-          )}
-        </div>
-      </div>
-
-      {editorMode && (
-        <div className="bg-blue-50 text-blue-800 text-xs p-3 rounded-xl border border-blue-200">
-          📱 Modo editor activo: arrastra las mesas dentro del plano. Alineación asistida a la cuadrícula activa.
-        </div>
-      )}
-
-      {unionMode && (
-        <div className="bg-blue-50 text-blue-800 text-xs p-3 rounded-xl border border-blue-200">
-          Selecciona 2 mesas para unir. Capacidad resultante: {selectedForUnion.reduce((sum, m) => sum + (m.capacidad || 0), 0)} pax
-        </div>
-      )}
-
-      {/* Plano SVG */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-stone-200 shadow-sm">
-        {renderSvg()}
       </div>
 
       {/* Gestión de mesas */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-stone-200 shadow-sm space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="font-extrabold text-sm text-stone-800">Gestión de mesas</h3>
+          <h3 className="font-extrabold text-sm text-stone-800">Listado de Mesas ({visualMesas.length})</h3>
           <button
             onClick={() => { resetMesaForm(); setShowMesaForm(true); }}
             className="px-3 py-2 rounded-xl text-xs font-bold bg-[#624A3E] text-white cursor-pointer hover:bg-[#503C32]"
@@ -945,7 +905,7 @@ export default function MesasModule({ mesas, onMesasChange, addLog = () => {} }:
           </form>
         )}
 
-        <div className="space-y-2 max-h-48 overflow-y-auto">
+        <div className="space-y-2 max-h-[60vh] overflow-y-auto">
           {visualMesas.map(m => (
             <div key={m.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-100">
               <div className="flex items-center gap-3">
@@ -955,7 +915,13 @@ export default function MesasModule({ mesas, onMesasChange, addLog = () => {} }:
                   <p className="text-[10px] text-stone-500">{capitalize(m.zona)} · {m.capacidad} pax · {m.estado}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedMesa(m)}
+                  className="px-2.5 py-1.5 bg-[#F5F1E9] hover:bg-[#E9DFD0] text-[#624A3E] text-[10px] font-black rounded-lg cursor-pointer transition-colors"
+                >
+                  {m.estado === 'libre' ? 'Reservar' : m.estado === 'ocupada' ? 'Liberar' : 'Gestionar'}
+                </button>
                 <button onClick={e => openEditMesa(m, e)} className="p-1.5 hover:bg-blue-50 text-stone-400 hover:text-blue-500 rounded-lg cursor-pointer transition-colors">
                   <Pencil className="w-3.5 h-3.5" />
                 </button>

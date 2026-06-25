@@ -183,6 +183,8 @@ CREATE TABLE IF NOT EXISTS proveedores (
   contacto TEXT NOT NULL,
   telefono TEXT,
   categoria TEXT,
+  correo TEXT,
+  tiempo_entrega_dias INT DEFAULT 1,
   insumo_principal TEXT
 );
 
@@ -203,7 +205,12 @@ CREATE TABLE IF NOT EXISTS reservas (
   fecha DATE NOT NULL,
   hora TEXT NOT NULL,
   id_mesa INT,
-  estado TEXT NOT NULL DEFAULT 'pendiente'
+  estado TEXT NOT NULL DEFAULT 'pendiente',
+  telefono TEXT,
+  email TEXT,
+  observaciones TEXT,
+  lista_espera BOOLEAN DEFAULT false,
+  prioridad_espera INT DEFAULT 0
 );
 
 -- Caja, payments, tickets and backups.

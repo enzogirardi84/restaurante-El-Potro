@@ -165,23 +165,37 @@ export default function RestaurantOpsModule({
             <Metric label="Listos" value={readyOrders.length} tone="ok" />
             <Metric label="Canales" value="2" />
           </div>
-          <Panel title="Canales conectados" icon={Truck}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <button onClick={() => onInjectDeliveryOrder('Rappi')} className="min-h-12 rounded-lg border border-emerald-200 bg-emerald-50 px-4 font-black text-emerald-800 hover:bg-emerald-100">
-                Simular pedido Rappi
+          <Panel title="Entregas Activas (Canales Conectados)" icon={Truck}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button 
+                onClick={() => onInjectDeliveryOrder('Rappi')} 
+                className="min-h-12 rounded-xl border border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-950 font-black text-xs px-4 shadow-sm transition-all duration-100 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-orange-600 animate-pulse" />
+                Simular pedido Rappi (API)
               </button>
-              <button onClick={() => onInjectDeliveryOrder('PedidosYa')} className="min-h-12 rounded-lg border border-amber-200 bg-amber-50 px-4 font-black text-amber-800 hover:bg-amber-100">
-                Simular pedido PedidosYa
+              <button 
+                onClick={() => onInjectDeliveryOrder('PedidosYa')} 
+                className="min-h-12 rounded-xl border border-red-300 bg-red-50 hover:bg-red-100 text-red-950 font-black text-xs px-4 shadow-sm transition-all duration-100 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
+                Simular pedido PedidosYa (API)
               </button>
             </div>
-            <div className="mt-4 space-y-2">
-              {deliveryOrders.slice(0, 6).map(pedido => (
-                <div key={pedido.id_pedido} className="flex items-center justify-between rounded-lg border border-stone-200 bg-white p-3">
-                  <span className="text-sm font-bold text-stone-800">#{pedido.id_pedido} | {pedido.numero_mesa}</span>
-                  <span className="text-xs font-black uppercase text-[#6B4A35]">{pedido.estado_comanda}</span>
+            <div className="mt-6 space-y-3">
+              <h4 className="text-[11px] font-black uppercase tracking-wider text-stone-500 pl-1">Listado de Pedidos Online</h4>
+              {deliveryOrders.map(pedido => (
+                <div key={pedido.id_pedido} className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 p-4 shadow-xs">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-extrabold text-stone-900 block">Orden #{pedido.id_pedido}</span>
+                    <span className="text-[10px] font-mono text-stone-500 font-semibold">{pedido.numero_mesa}</span>
+                  </div>
+                  <span className="rounded-md border border-[#8C6239]/20 bg-[#F7EFE4] px-2.5 py-1 text-[10px] font-black uppercase text-[#6B4A35]">
+                    {pedido.estado_comanda.replace('_', ' ')}
+                  </span>
                 </div>
               ))}
-              {deliveryOrders.length === 0 && <Empty text="Todavia no hay pedidos externos en cola." />}
+              {deliveryOrders.length === 0 && <Empty text="No hay pedidos externos en cola actualmente." />}
             </div>
           </Panel>
         </>

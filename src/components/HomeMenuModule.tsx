@@ -19,7 +19,9 @@ import {
   ChevronRight,
   Bell,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Truck,
+  ClipboardList
 } from 'lucide-react';
 import { Mesa, Pedido, Insumo, ProductoMenu } from '../types';
 import { getSupabaseClient } from '../supabase';
@@ -70,18 +72,6 @@ export default function HomeMenuModule({
 
   // Menu items list
   const menuItems = [
-    {
-      id: 'panel',
-      title: 'Panel General',
-      description: 'Supervisión en vivo de comandas, auditoría de logs y consolidador de métricas.',
-      icon: TrendingUp,
-      color: 'from-amber-500/10 to-amber-600/5 hover:border-amber-400',
-      iconColor: 'text-amber-700',
-      badge: {
-        text: `$${totalSales.toLocaleString('es-AR')}`,
-        type: 'emerald'
-      }
-    },
     {
       id: 'mozo',
       title: 'Mozo / Salón',
@@ -167,14 +157,38 @@ export default function HomeMenuModule({
       }
     },
     {
-      id: 'facturacion',
-      title: 'Facturación',
-      description: 'Historial fiscal de facturas y tickets emitidos, con cálculo automático de IVA.',
-      icon: Receipt,
-      color: 'from-stone-500/10 to-stone-600/5 hover:border-stone-400',
-      iconColor: 'text-stone-700',
+      id: 'turnos',
+      title: 'Fichaje',
+      description: 'Control de asistencia, turnos y personal activo.',
+      icon: Clock,
+      color: 'from-amber-500/10 to-amber-600/5 hover:border-amber-400',
+      iconColor: 'text-amber-700',
       badge: {
-        text: 'Control fiscal',
+        text: 'Turnos',
+        type: 'neutral'
+      }
+    },
+    {
+      id: 'delivery',
+      title: 'Delivery',
+      description: 'Pedidos externos, canales online y despacho.',
+      icon: Truck,
+      color: 'from-green-500/10 to-green-600/5 hover:border-green-400',
+      iconColor: 'text-green-700',
+      badge: {
+        text: 'Entregas',
+        type: 'neutral'
+      }
+    },
+    {
+      id: 'recetas',
+      title: 'Recetas / Escandallos',
+      description: 'Ingredientes, gramajes y fórmulas de descuento.',
+      icon: ClipboardList,
+      color: 'from-amber-500/10 to-amber-600/5 hover:border-amber-400',
+      iconColor: 'text-amber-700',
+      badge: {
+        text: 'Recetas',
         type: 'neutral'
       }
     },
@@ -203,6 +217,15 @@ export default function HomeMenuModule({
       }
     }
   ];
+
+  const isMozo = activeMozo === 'Enzo' || activeMozo === 'Micaela';
+  const allowedMozoViews = ['mozo', 'caja', 'reservas', 'turnos', 'delivery', 'menu', 'recetas'];
+  const filteredMenuItems = menuItems.filter(item => {
+    if (isMozo) {
+      return allowedMozoViews.includes(item.id);
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-8 animate-fadeIn" id="home-operational-menu">
@@ -342,7 +365,7 @@ export default function HomeMenuModule({
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {menuItems.map(item => {
+          {filteredMenuItems.map(item => {
             const Icon = item.icon;
             
             // Determine badge theme colors
