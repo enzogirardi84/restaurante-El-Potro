@@ -59,6 +59,10 @@ export default function BusinessIntelligence({ productosMenu, logs }: BusinessIn
     });
   }, [logs, logFilter, logSearch]);
 
+  const stockAlertsCount = useMemo(() => {
+    return logs.filter(l => l.tipo === 'alerta_stock').length;
+  }, [logs]);
+
   return (
     <div className="space-y-6" id="bi-analytics-container">
       
@@ -95,7 +99,7 @@ export default function BusinessIntelligence({ productosMenu, logs }: BusinessIn
           <div>
             <span className="text-[10px] uppercase font-bold text-stone-500 font-sans tracking-wider block">Alertas Críticas</span>
             <h4 className="text-xl font-black text-stone-900 font-mono mt-1">
-              {logs.filter(l => l.tipo === 'alerta_stock').length} registradas
+              {stockAlertsCount} registradas
             </h4>
             <p className="text-[9px] text-[#EF4444] mt-1.5 font-sans font-bold">
               Acciones de reabastecimiento urgente

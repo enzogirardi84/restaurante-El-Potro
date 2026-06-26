@@ -310,12 +310,21 @@ export default function App() {
       const client = getSupabaseClient();
       if (!client) return;
       try {
-        const dbMesas = await dbFetchMesas();
-        const dbInsumos = await dbFetchInsumos();
-        const dbProducts = await dbFetchProductosMenu();
-        const dbRecipes = await dbFetchRecetas();
-        const dbPedidos = await dbFetchPedidos();
-        const dbMermas = await dbFetchMermas();
+        const [
+          dbMesas,
+          dbInsumos,
+          dbProducts,
+          dbRecipes,
+          dbPedidos,
+          dbMermas
+        ] = await Promise.all([
+          dbFetchMesas(),
+          dbFetchInsumos(),
+          dbFetchProductosMenu(),
+          dbFetchRecetas(),
+          dbFetchPedidos(),
+          dbFetchMermas()
+        ]);
 
         if (dbMesas && dbMesas.length > 0) {
           setMesas(dbMesas.map(m => ({
