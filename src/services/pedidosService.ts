@@ -1,70 +1,117 @@
-import { getActiveSupabaseClient } from '../lib/supabaseClient';
+import { getActiveSupabaseClient, tryGetActiveSupabaseClient } from '../lib/supabaseClient';
 import { Pedido, PedidoItem } from '../types';
+
+const CACHE_KEY = 'el_patron_cache_pedidos';
+
+const invalidateCache = () => {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem(CACHE_KEY);
+  }
+};
+
+async function fetchAndAssemblePedidos(client: any): Promise<Pedido[]> {
+  // 1. Fetch headers
+  const { data: headers, error: hError } = await client
+    .from('pedidos_cabecera')
+    .select('*')
+    .order('fecha_hora', { ascending: false });
+    
+  if (hError) {
+    console.error('Error fetching pedidos headers:', hError);
+    throw hError;
+  }
+  
+  if (!headers || headers.length === 0) return [];
+
+  // 2. Fetch all details for these headers
+  const { data: details, error: dError } = await client
+    .from('pedido_detalle')
+    .select('*');
+    
+  if (dError) {
+    console.error('Error fetching pedido details:', dError);
+    throw dError;
+  }
+
+  // Assemble nested structures matching `Pedido`
+  return headers.map(h => {
+    const relatedItems: PedidoItem[] = (details || [])
+      .filter(d => d.id_pedido === h.id_pedido)
+      .map(d => ({
+        id_producto: d.id_producto || '',
+        nombre: d.nombre,
+        cantidad: d.cantidad,
+        categoria: d.categoria
+      }));
+
+    // Fallback to JSON items if no details are present but json string exists
+    let finalItems = relatedItems;
+    if (finalItems.length === 0 && h.items) {
+      try {
+        finalItems = typeof h.items === 'string' ? JSON.parse(h.items) : h.items;
+      } catch (e) {
+        console.warn('Failed to parse items fallback JSON:', e);
+      }
+    }
+
+    return {
+      id_pedido: h.id_pedido,
+      id_mesa: h.id_mesa,
+      numero_mesa: h.numero_mesa,
+      mozo: h.mozo,
+      estado_comanda: h.estado_comanda,
+      items: finalItems,
+      observaciones: h.observaciones || undefined,
+      fecha_hora: new Date(h.fecha_hora),
+      minutos_transcurridos: h.minutos_transcurridos || 0,
+      origen: h.origen,
+      tiempo_despacho_minutos: h.tiempo_despacho_minutos || undefined,
+      segundos_en_listo: h.segundos_en_listo || undefined
+    };
+  });
+}
 
 export const pedidosService = {
   async list(): Promise<Pedido[]> {
-    const supabase = getActiveSupabaseClient();
-    
-    // 1. Fetch headers
-    const { data: headers, error: hError } = await supabase
-      .from('pedidos_cabecera')
-      .select('*')
-      .order('fecha_hora', { ascending: false });
-      
-    if (hError) {
-      console.error('Error fetching pedidos headers:', hError);
-      throw hError;
-    }
-    
-    if (!headers || headers.length === 0) return [];
+    const cached = typeof localStorage !== 'undefined' ? localStorage.getItem(CACHE_KEY) : null;
+    const client = tryGetActiveSupabaseClient();
 
-    // 2. Fetch all details for these headers
-    const { data: details, error: dError } = await supabase
-      .from('pedido_detalle')
-      .select('*');
-      
-    if (dError) {
-      console.error('Error fetching pedido details:', dError);
-      throw dError;
-    }
-
-    // Assemble nested structures matching `Pedido`
-    const assembled: Pedido[] = headers.map(h => {
-      const relatedItems: PedidoItem[] = (details || [])
-        .filter(d => d.id_pedido === h.id_pedido)
-        .map(d => ({
-          id_producto: d.id_producto || '',
-          nombre: d.nombre,
-          cantidad: d.cantidad,
-          categoria: d.categoria
-        }));
-
-      // Fallback to JSON items if no details are present but json string exists
-      let finalItems = relatedItems;
-      if (finalItems.length === 0 && h.items) {
-        try {
-          finalItems = typeof h.items === 'string' ? JSON.parse(h.items) : h.items;
-        } catch (e) {
-          console.warn('Failed to parse items fallback JSON:', e);
-        }
+    if (cached) {
+      if (client) {
+        // Stale-While-Revalidate: fetch updated data in background
+        setTimeout(async () => {
+          try {
+            const assembled = await fetchAndAssemblePedidos(client);
+            localStorage.setItem(CACHE_KEY, JSON.stringify(assembled));
+          } catch (e) {
+            console.warn('Background pedidos cache refresh failed:', e);
+          }
+        }, 500);
       }
 
-      return {
-        id_pedido: h.id_pedido,
-        id_mesa: h.id_mesa,
-        numero_mesa: h.numero_mesa,
-        mozo: h.mozo,
-        estado_comanda: h.estado_comanda,
-        items: finalItems,
-        observaciones: h.observaciones || undefined,
-        fecha_hora: new Date(h.fecha_hora),
-        minutos_transcurridos: h.minutos_transcurridos || 0,
-        origen: h.origen,
-        tiempo_despacho_minutos: h.tiempo_despacho_minutos || undefined,
-        segundos_en_listo: h.segundos_en_listo || undefined
-      };
-    });
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          return parsed.map(p => ({
+            ...p,
+            fecha_hora: new Date(p.fecha_hora)
+          }));
+        }
+      } catch (e) {
+        console.warn('Failed parsing pedidos cache:', e);
+      }
+    }
 
+    if (!client) {
+      return [];
+    }
+
+    const assembled = await fetchAndAssemblePedidos(client);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(assembled));
+      } catch {}
+    }
     return assembled;
   },
 
@@ -74,11 +121,13 @@ export const pedidosService = {
   },
 
   async create(pedido: Pedido): Promise<Pedido> {
+    invalidateCache();
     await this.upsert([pedido]);
     return pedido;
   },
 
   async update(id: number, fields: Partial<Pedido>): Promise<void> {
+    invalidateCache();
     const supabase = getActiveSupabaseClient();
     
     // Map fields to header columns
@@ -125,6 +174,7 @@ export const pedidosService = {
   },
 
   async upsert(pedidos: Pedido[]): Promise<void> {
+    invalidateCache();
     const supabase = getActiveSupabaseClient();
     
     // 1. Process each nested order
@@ -171,6 +221,7 @@ export const pedidosService = {
   },
 
   async remove(id: number): Promise<boolean> {
+    invalidateCache();
     const supabase = getActiveSupabaseClient();
     const { error } = await supabase.from('pedidos_cabecera').delete().eq('id_pedido', id);
     if (error) {

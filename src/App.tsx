@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   UtensilsCrossed,
   ChefHat,
@@ -304,11 +304,15 @@ export default function App() {
   const [pedidos, setPedidos] = useState<Pedido[]>(INITIAL_PEDIDOS);
   const [mermas, setMermas] = useState<Merma[]>([]);
 
+  const fetchTimeoutRef = useRef<any>(null);
+
   // Auto-sync effect on mount
   useEffect(() => {
+    let active = true;
+    let channel: any = null;
+    const client = getSupabaseClient();
+
     const autoLoadSupabase = async () => {
-      const client = getSupabaseClient();
-      if (!client) return;
       try {
         const [
           dbMesas,
@@ -325,6 +329,8 @@ export default function App() {
           dbFetchPedidos(),
           dbFetchMermas()
         ]);
+
+        if (!active) return;
 
         if (dbMesas && dbMesas.length > 0) {
           setMesas(dbMesas.map(m => ({
@@ -355,6 +361,55 @@ export default function App() {
       }
     };
     autoLoadSupabase();
+
+    if (client) {
+      const triggerDebouncedFetch = () => {
+        if (fetchTimeoutRef.current) {
+          clearTimeout(fetchTimeoutRef.current);
+        }
+        fetchTimeoutRef.current = setTimeout(async () => {
+          try {
+            const refreshed = await dbFetchPedidos();
+            if (refreshed && active) {
+              setPedidos(refreshed);
+            }
+          } catch (err) {
+            console.warn('Realtime fetch for pedidos failed:', err);
+          }
+        }, 150);
+      };
+
+      channel = client
+        .channel('realtime_pedidos_app')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_cabecera' }, triggerDebouncedFetch)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedido_detalle' }, triggerDebouncedFetch)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, async () => {
+          try {
+            const refreshed = await dbFetchMesas();
+            if (refreshed && active) {
+              setMesas(refreshed.map(m => ({
+                id_mesa: m.id_mesa,
+                numero_mesa: m.numero_mesa,
+                estado: m.estado || 'libre',
+                comensales: m.comensales || undefined
+              })));
+            }
+          } catch (err) {
+            console.warn('Realtime fetch for mesas failed:', err);
+          }
+        })
+        .subscribe();
+    }
+
+    return () => {
+      active = false;
+      if (client && channel) {
+        client.removeChannel(channel);
+      }
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Sync completion callback handed to settings
