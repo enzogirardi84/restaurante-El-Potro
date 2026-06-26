@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Download, RefreshCw, CheckCircle, Clock, Trash } from 'lucide-react';
-import { backupsService, Checkpoint } from '../services/backupsService';
+import { Database, Download, RefreshCw, CheckCircle, Clock, Trash, AlertTriangle } from 'lucide-react';
+import { backupsService, BackupSnapshotData, Checkpoint, parseBackupContent } from '../services/backupsService';
 import { usuariosService } from '../services/usuariosService';
 import { mesasService } from '../services/mesasService';
 import { insumosService } from '../services/insumosService';
@@ -15,15 +15,19 @@ import { facturacionService } from '../services/facturacionService';
 import { auditoriaService } from '../services/auditoriaService';
 
 interface BackupsModuleProps {
-  onResetAllData: () => void;
+  onRestoreData: (snapshot: BackupSnapshotData) => void;
   addLog: (tipo: any, mensaje: string) => void;
 }
 
 export default function BackupsModule({
-  onResetAllData,
+  onRestoreData,
   addLog
 }: BackupsModuleProps) {
   const [backups, setBackups] = useState<Checkpoint[]>([]);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [backingUp, setBackingUp] = useState(false);
+  const [restoredOk, setRestoredOk] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'restore' | 'delete'; cp: Checkpoint } | null>(null);
 
   useEffect(() => {
     backupsService.list().then(data => {
@@ -31,24 +35,19 @@ export default function BackupsModule({
         setBackups(data);
       } else {
         const defaults: Checkpoint[] = [
-          { id_cp: 'cp_1', nombre: 'Cierre de Caja Turno Tarde', fecha: 'Hoy - 16:30 hs', peso: '234 KB', tablas_afectadas: 'pedidos, mesas, logs', tipo: 'manual' },
-          { id_cp: 'cp_2', nombre: 'Backup Automático Diario Cloud', fecha: 'Ayer - 04:00 AM', peso: '512 KB', tablas_afectadas: 'todas (completo)', tipo: 'automatica' },
-          { id_cp: 'cp_3', nombre: 'Ajuste Inicial de Escandallos Receta', fecha: '10 de Junio - 20:10 hs', peso: '190 KB', tablas_afectadas: 'insumos, recetas', tipo: 'manual' },
+          { id_cp: 'cp_1', nombre: 'Cierre de Caja Turno Tarde', fecha: 'Hoy - 16:30 hs', peso: '234 KB', tablas_afectadas: 'pedidos, mesas, logs', tipo: 'manual', contenido: '{}', ubicacion: 'local' },
+          { id_cp: 'cp_2', nombre: 'Backup Automático Diario Cloud', fecha: 'Ayer - 04:00 AM', peso: '512 KB', tablas_afectadas: 'todas (completo)', tipo: 'automatica', contenido: '{}', ubicacion: 'cloud' },
+          { id_cp: 'cp_3', nombre: 'Ajuste Inicial de Escandallos Receta', fecha: '10 de Junio - 20:10 hs', peso: '190 KB', tablas_afectadas: 'insumos, recetas', tipo: 'manual', contenido: '{}', ubicacion: 'local' },
         ];
         setBackups(defaults);
       }
     }).catch(() => {});
   }, []);
 
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [backingUp, setBackingUp] = useState(false);
-
-
   const handleCreateBackup = async () => {
     setBackingUp(true);
     addLog('sistema', `SISTEMA: Iniciando volcado completo de base de datos Postgres...`);
     try {
-      // Gather active operational state from all entities
       const [
         usuarios,
         mesas,
@@ -104,7 +103,6 @@ export default function BackupsModule({
       });
       setBackups(prev => [newBackup, ...prev]);
       
-      // Auto-trigger native JSON download in user browser to satisfy "export JSON"
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snapshot, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
@@ -113,7 +111,7 @@ export default function BackupsModule({
       downloadAnchor.click();
       downloadAnchor.remove();
 
-      addLog('sistema', `SISTEMA: Copia de seguridad guardada en Supabase y descargada como JSON.`);
+      addLog('sistema', `SISTEMA: Copia de seguridad guardada y descargada como JSON.`);
     } catch (error: any) {
       console.error(error);
       addLog('sistema', `ERROR: Falló el volcado automático del sistema: ${error.message}`);
@@ -122,20 +120,37 @@ export default function BackupsModule({
     }
   };
 
-  const [restoredOk, setRestoredOk] = useState<string | null>(null);
-
   const handleRestoreBackup = (cp: Checkpoint) => {
-    setLoadingId(cp.id_cp);
-    setTimeout(() => {
-      onResetAllData();
-      addLog('sistema', `SISTEMA: Base de datos restaurada al punto de control '${cp.nombre}' con borrado local.`);
-      setRestoredOk(`El punto '${cp.nombre}' se ha restaurado con éxito.`);
-      setLoadingId(null);
-      setTimeout(() => setRestoredOk(null), 6000);
-    }, 1500);
+    setConfirmAction({ type: 'restore', cp });
   };
 
-  const handleDeleteBackup = (id: string) => {
+  const executeRestore = async (cp: Checkpoint) => {
+    if (!cp.contenido) return;
+    setLoadingId(cp.id_cp);
+    setConfirmAction(null);
+    try {
+      addLog('sistema', `SISTEMA: Iniciando restauración al punto de control '${cp.nombre}'...`);
+      const snapshot = parseBackupContent(cp.contenido);
+      await backupsService.restore(snapshot);
+      onRestoreData(snapshot);
+      setRestoredOk(`El punto '${cp.nombre}' se ha restaurado con éxito.`);
+      addLog('sistema', `SISTEMA: Base de datos restaurada al punto de control '${cp.nombre}' con sincronización.`);
+      setTimeout(() => setRestoredOk(null), 6000);
+    } catch (error: any) {
+      console.error(error);
+      addLog('sistema', `ERROR: Falló la restauración al punto '${cp.nombre}': ${error.message}`);
+      alert(`Error al restaurar copia de seguridad: ${error.message}`);
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleDeleteBackup = (cp: Checkpoint) => {
+    setConfirmAction({ type: 'delete', cp });
+  };
+
+  const executeDelete = (id: string) => {
+    setConfirmAction(null);
     setBackups(prev => prev.filter(c => c.id_cp !== id));
     backupsService.remove(id).catch(err => console.error(err));
     addLog('sistema', `SISTEMA: Registro de checkpoint eliminado de la tabla backups.`);
@@ -152,10 +167,10 @@ export default function BackupsModule({
         </div>
         <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs">
           <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider block">Base de Datos</span>
-          <h4 className="text-2xl font-black text-stone-900 font-mono mt-1">Postgres / SQLite</h4>
+          <h4 className="text-2xl font-black text-stone-900 font-mono mt-1">Postgres / Supabase</h4>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-[#624A3E]/5 border-l-4 border-l-[#624A3E]">
-          <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider block">Último Respoldo Sincronizado</span>
+          <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider block">Último Respaldo</span>
           <h4 className="text-base font-bold text-stone-700 mt-2 flex items-center gap-1">
             <Clock className="w-4 h-4 text-stone-400" />
             Hoy, hace 15 min
@@ -209,6 +224,15 @@ export default function BackupsModule({
                     }`}>
                       {cp.tipo}
                     </span>
+                    {cp.ubicacion && (
+                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                        cp.ubicacion === 'cloud' 
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-100' 
+                          : 'bg-stone-100 text-stone-700 border-stone-200'
+                      }`}>
+                        {cp.ubicacion}
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-400 font-bold">
                     <span>Creado: <strong className="text-stone-500 font-mono">{cp.fecha}</strong></span>
@@ -222,14 +246,14 @@ export default function BackupsModule({
                 <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
                   <button
                     onClick={() => handleRestoreBackup(cp)}
-                    disabled={isLoading}
+                    disabled={isLoading || !cp.contenido}
                     className="flex-1 sm:flex-initial py-1.5 px-3 rounded-lg bg-orange-50 hover:bg-orange-100 disabled:bg-stone-100 text-orange-700 disabled:text-stone-400 text-[10px] font-black transition-colors flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
                     {isLoading ? 'Cargando backup...' : 'Restaurar Sistema'}
                   </button>
                   <button
-                    onClick={() => handleDeleteBackup(cp.id_cp)}
+                    onClick={() => handleDeleteBackup(cp)}
                     className="p-1.5 rounded-lg bg-stone-50 hover:bg-rose-50 text-stone-450 hover:text-rose-500 transition-colors cursor-pointer"
                     title="Borrar respaldo"
                   >
@@ -242,6 +266,47 @@ export default function BackupsModule({
         </div>
 
       </div>
+
+      {/* Confirmation Dialog Modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-[#FAF7F0] rounded-2xl border border-stone-200 max-w-md w-full p-6 space-y-4 shadow-xl animate-fadeIn">
+            <div className="flex items-center gap-3 text-amber-600">
+              <AlertTriangle className="w-8 h-8 shrink-0" />
+              <h3 className="text-lg font-black text-stone-850 uppercase tracking-tight">
+                {confirmAction.type === 'restore' ? 'Confirmar Restauración' : 'Confirmar Eliminación'}
+              </h3>
+            </div>
+            
+            <p className="text-xs text-stone-600 leading-relaxed">
+              {confirmAction.type === 'restore' 
+                ? `¿Está seguro de que desea restaurar los datos del punto de control "${confirmAction.cp.nombre}"? Esto reemplazará los datos actuales del sistema con la versión del respaldo.`
+                : `¿Está seguro de que desea eliminar el punto de control "${confirmAction.cp.nombre}"? Esta acción no se puede deshacer.`
+              }
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => confirmAction.type === 'restore' ? executeRestore(confirmAction.cp) : executeDelete(confirmAction.cp.id_cp)}
+                className={`px-4 py-2 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer ${
+                  confirmAction.type === 'restore' 
+                    ? 'bg-amber-600 hover:bg-amber-700' 
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {confirmAction.type === 'restore' ? 'Restaurar Datos' : 'Eliminar Respaldo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

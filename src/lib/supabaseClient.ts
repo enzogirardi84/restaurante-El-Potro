@@ -11,14 +11,14 @@ const readLocalConfig = (key: string) => {
 };
 
 export const getSupabaseConfig = (): SupabaseConfig => {
-  const env = (import.meta as any).env;
+  const env = (import.meta as any).env || {};
   const url = env.VITE_SUPABASE_URL || readLocalConfig('SUPABASE_URL');
   const key = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || readLocalConfig('SUPABASE_ANON_KEY');
   return { url, key };
 };
 
 export const hasSupabaseConfig = (config = getSupabaseConfig()) => {
-  return Boolean(config.url && config.key && !config.key.includes('...'));
+  return Boolean(config.url && config.key && !config.key.includes('...') && !config.key.includes('tu-anon-key'));
 };
 
 let cachedClient: SupabaseClient | null = null;
