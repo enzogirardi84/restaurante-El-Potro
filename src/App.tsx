@@ -470,6 +470,20 @@ export default function App() {
   // Simulation Clock state (operational minutes passed)
   const [minutosGlobal, setMinutosGlobal] = useState<number>(0);
   const [autoTimerRunning, setAutoTimerRunning] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState<boolean>(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Helper log registrar
   const addLog = (
@@ -980,9 +994,19 @@ export default function App() {
               <span className="font-sans font-extrabold text-base text-white tracking-tight block">El Patrón Pro</span>
               <span className="text-[9px] uppercase font-bold text-[#D8B08A] tracking-wider block mt-0.5 leading-none">Gestión gastronómica</span>
             </div>
-            <span className={`bg-[#6B4A35]/25 text-amber-200 text-[8px] border border-[#8C6239]/30 px-1.5 py-1 rounded font-bold font-mono shrink-0 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>
-              v1.2.0
-            </span>
+            <div className={`flex flex-col items-end gap-1 shrink-0 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}>
+              <span className="bg-[#6B4A35]/25 text-amber-200 text-[8px] border border-[#8C6239]/30 px-1.5 py-0.5 rounded font-bold font-mono">
+                v1.2.0
+              </span>
+              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-1 transition-all border ${
+                isOnline 
+                  ? 'bg-emerald-500/10 text-emerald-450 border-emerald-500/30' 
+                  : 'bg-rose-500/10 text-rose-450 border-rose-500/30 animate-pulse'
+              }`}>
+                <span className={`w-1 h-1 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                {isOnline ? 'ONLINE' : 'OFFLINE'}
+              </span>
+            </div>
           </div>
           <button
             type="button"

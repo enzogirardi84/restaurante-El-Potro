@@ -12,8 +12,8 @@ const readLocalConfig = (key: string) => {
 
 export const getSupabaseConfig = (): SupabaseConfig => {
   const env = (import.meta as any).env || {};
-  const url = env.VITE_SUPABASE_URL || readLocalConfig('SUPABASE_URL');
-  const key = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || readLocalConfig('SUPABASE_ANON_KEY');
+  const url = env.VITE_SUPABASE_URL || readLocalConfig('el_patron_supabase_url');
+  const key = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || readLocalConfig('el_patron_supabase_anon_key');
   return { url, key };
 };
 
