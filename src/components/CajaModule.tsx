@@ -195,7 +195,7 @@ export default function CajaModule({
     const hasOjoBife = selectedPedido.items.some(it => it.id_producto === 'prod_car_lomo_pimienta' || it.id_producto === 'prod_car_bondiola_ahumada');
     const hasVino = selectedPedido.items.some(it => it.id_producto === 'prod_vin_trumpeter_botella' || it.id_producto === 'prod_vin_rutini_botella');
     const hasBurger = selectedPedido.items.some(it => it.id_producto === 'prod_car_mila_entrecot' || it.id_producto === 'prod_cri_lentejas');
-    const hasGaseosa = selectedPedido.items.some(it => it.id_insumo === 'ins_beb_gaseosa' || it.nombre.toLowerCase().includes('gaseosa') || it.id_producto === 'prod_gaseosa');
+    const hasGaseosa = selectedPedido.items.some(it => it.nombre.toLowerCase().includes('gaseosa') || it.id_producto === 'prod_gaseosa');
 
     // Promos apply only if we are paying the whole ticket or paying those items
     const qualifiesForBifeVino = hasOjoBife && hasVino && (!splitByProducts || (selectedProductsForSplit.some(id => id === 'prod_car_lomo_pimienta' || id === 'prod_car_bondiola_ahumada') && (selectedProductsForSplit.includes('prod_vin_trumpeter_botella') || selectedProductsForSplit.includes('prod_vin_rutini_botella'))));
@@ -847,7 +847,7 @@ export default function CajaModule({
                 type="checkbox" 
                 id="openDrawerCheck" 
                 checked={printerConfig.openDrawer}
-                onChange={e => setPrinterConfig(prev => ({ ...prev, openDrawer: e.checked }))}
+                onChange={e => setPrinterConfig(prev => ({ ...prev, openDrawer: e.target.checked }))}
                 className="w-4 h-4 accent-[#624A3E]"
               />
               <label htmlFor="openDrawerCheck" className="text-[10px] font-bold text-stone-600 block cursor-pointer">Abre Cajón Portamonedas</label>
@@ -1202,7 +1202,7 @@ export default function CajaModule({
 
                 {/* Automated Promotions Detector flag box */}
                 {((selectedPedido.items.some(it => it.id_producto === 'prod_car_lomo_pimienta' || it.id_producto === 'prod_car_bondiola_ahumada') && selectedPedido.items.some(it => it.id_producto === 'prod_vin_trumpeter_botella' || it.id_producto === 'prod_vin_rutini_botella')) || 
-                 (selectedPedido.items.some(it => it.id_producto === 'prod_car_mila_entrecot' || it.id_producto === 'prod_cri_lentejas') && selectedPedido.items.some(it => it.id_insumo === 'ins_beb_gaseosa' || it.id_producto === 'prod_gaseosa'))) && (
+                 (selectedPedido.items.some(it => it.id_producto === 'prod_car_mila_entrecot' || it.id_producto === 'prod_cri_lentejas') && selectedPedido.items.some(it => it.nombre.toLowerCase().includes('gaseosa') || it.id_producto === 'prod_gaseosa'))) && (
                   <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-lg flex items-start gap-2 text-emerald-800">
                     <Percent className="w-4 h-4 text-emerald-700 mt-0.5 shrink-0" />
                     <div className="text-[10px] font-sans">
